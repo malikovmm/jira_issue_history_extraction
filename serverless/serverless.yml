@@ -1,0 +1,79 @@
+site:
+  component: '@sls-next/serverless-component@3.3.0'
+  inputs:
+    name:
+      defaultLambda: '${env.NAME}-default-lambda'
+      apiLambda: '${env.NAME}-api-lambda'
+      imageLambda: '${env.NAME}-image-lambda'
+      regenerationLambda: '${env.NAME}-regeneration-lambda'
+    description: '${env.NAME} NextJS Site'
+    timeout: 30
+    region: ${env.REGION}
+    policy: ${sitePolicy.arn}
+    bucketName: '${env.BUCKET_NAME}'
+    bucketRegion: ${env.REGION}
+    nextConfigDir: 'frontend'
+    nextStaticDir: 'frontend'
+    domain: ['${env.SUBDOMAIN}', '${env.DOMAIN}'] # [ sub-domain, domain ]
+    build:
+      cmd: 'yarn'
+      cwd: './'
+      args: ['build-next']
+      enabled: true
+      env:
+        STAGE: ${env.STAGE}
+
+    src:
+      src: ./
+      hook: npm run build # React application. "hook" runs before deployment to build the source code.  "dist" is the built artifact directory which is uploaded.
+      dist: .next
+    cloudfront:
+      waitBeforeInvalidate: false
+      priceClass: 'PriceClass_100'
+      api/*:
+        minTTL: 10
+        maxTTL: 10
+        defaultTTL: 10
+        forward:
+          headers: [Authorization]
+
+sitePolicy:
+  component: ./node_modules/@serverless/aws-iam-policy
+  inputs:
+    name: '${env.NAME}-policy'
+    description: '${env.NAME} IAM Policy'
+    policy:
+      Version: '2012-10-17'
+      Statement:
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: '*'
+        - Effect: Allow
+          Action:
+            - s3:ListBucket
+            - s3:GetObject
+            - s3:PutObject
+            - s3:DeleteObject
+          Resource:
+            - 'arn:aws:s3:::${env.BUCKET_NAME}*'
+            - 'arn:aws:s3:::${env.BUCKET_NAME}/*'
+        - Effect: Allow
+          Action:
+            - sqs:SendMessage
+            - sqs:ReceiveMessage
+            - sqs:DeleteMessage
+            - sqs:GetQueueAttributes
+          Resource:
+            - 'arn:aws:sqs:*:*:${env.BUCKET_NAME}.fifo'
+siteRole:
+  component: ./node_modules/@serverless/aws-iam-role
+  inputs:
+    name: '${env.NAME}-role'
+    description: '${env.NAME} IAM Role'
+    service: ['lambda.amazonaws.com', 'edgelambda.amazonaws.com']
+    policy:
+      arn: ${sitePolicy.arn}
+    region: ${env.REGION}

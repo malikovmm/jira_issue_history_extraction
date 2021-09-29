@@ -1,0 +1,201 @@
+{
+  "key": "<%= pluginKey %>",
+  "name": "<%= name %>",
+  "description": "<%= description %>",
+  "enableLicensing": true,
+  "vendor": {
+    "name": "Top Shelf Solutions",
+    "url": "https://www.tss.io"
+  },
+  "baseUrl": "<%= localBaseUrl %>",
+  "links": {
+    "self": "<%= localBaseUrl %>/atlassian-connect.json",
+    "homepage": "<%= localBaseUrl %>/atlassian-connect.json"
+  },
+  "authentication": {
+    "type": "jwt"
+  },
+  "apiMigrations": {
+    "context-qsh": true
+  },
+  "lifecycle": {
+    "installed": "/api/installed",
+    "uninstalled": "/api/uninstalled",
+    "enabled": "/api/enabled",
+    "disabled": "/api/disabled"
+  },
+  "scopes": ["READ", "WRITE", "ACT_AS_USER", "DELETE"],
+  "modules": {
+    "jiraEntityProperties": [],
+    "generalPages": [
+      {
+        "key": "<%= pluginKey %>-top",
+        "url": "/module?location=system.top.navigation.bar",
+        "location": "system.top.navigation.bar",
+        "cacheable": false,
+        "weight": 999,
+        "name": {
+          "value": "<%= pluginKey %><%= propertyAlias %>"
+        },
+        "icon": {
+          "width": 24,
+          "height": 24,
+          "url": "/images/pluginLogo.png"
+        },
+        "conditions": [
+          {
+            "and": [
+              {
+                "condition": "user_is_logged_in"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+
+    "webPanels": [
+      {
+        "key": "<%= pluginKey %>-right",
+        "url": "/module?location=atl.jira.view.issue.right.context",
+        "location": "atl.jira.view.issue.right.context",
+        "cacheable": false,
+        "weight": 999,
+        "supportsNative": true,
+        "name": {
+          "value": "<%= pluginKey %><%= propertyAlias %>"
+        },
+        "conditions": [
+          {
+            "and": [
+              {
+                "condition": "user_is_logged_in"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "<%= pluginKey %>-left",
+        "url": "/module?location=atl.jira.view.issue.left.context",
+        "location": "atl.jira.view.issue.left.context",
+        "cacheable": false,
+        "weight": 999,
+        "supportsNative": true,
+        "name": {
+          "value": "<%= pluginKey %><%= propertyAlias %>"
+        },
+        "conditions": [
+          {
+            "and": [
+              {
+                "condition": "user_is_logged_in"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "dialogs": [
+      {
+        "key": "<%= pluginKey %>-dialog",
+        "url": "/module?location=dialog&dialog=1",
+        "cacheable": false,
+        "options": {
+          "header": {
+            "value": "<%= pluginKey %><%= propertyAlias %>"
+          }
+        },
+        "conditions": [
+          {
+            "condition": "user_is_logged_in"
+          }
+        ]
+      }
+    ],
+    "jiraProjectPages": [
+      {
+        "key": "<%= pluginKey %>-project",
+        "cacheable": false,
+        "weight": 100,
+        "name": {
+          "value": "<%= pluginKey %><%= propertyAlias %>"
+        },
+        "iconUrl": "/images/pluginLogo.png",
+        "url": "/module?location=project-sidebar1",
+        "conditions": [
+          {
+            "and": [
+              {
+                "condition": "user_is_logged_in"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "configurePage": {
+      "url": "/module?location=configure",
+      "key": "<%= pluginKey %>-configure",
+      "name": {
+        "value": "Configure <%= pluginKey %><%= propertyAlias %>"
+      },
+      "location": "admin_plugins_menu/<%= pluginKey %>-addon-menu",
+      "conditions": [
+        {
+          "condition": "user_is_admin"
+        }
+      ]
+    },
+    "adminPages": [
+      {
+        "url": "/module?location=admin-page",
+        "key": "<%= pluginKey %>-admin-page",
+        "name": {
+          "value": "Admin <%= pluginKey %><%= propertyAlias %>"
+        },
+        "location": "admin_plugins_menu/<%= pluginKey %>-addon-menu",
+        "conditions": [
+          {
+            "condition": "user_is_admin"
+          }
+        ]
+      }
+    ],
+    "webSections": [
+      {
+        "key": "<%= pluginKey %>-addon-menu",
+        "location": "admin_plugins_menu",
+        "name": {
+          "value": "Admin <%= pluginKey %><%= propertyAlias %>"
+        },
+        "conditions": [
+          {
+            "condition": "user_is_admin"
+          }
+        ]
+      }
+    ],
+    "webItems": [
+      {
+        "key": "<%= pluginKey %>-addon-link",
+        "location": "admin_plugins_menu/<%= pluginKey %>-addon-menu",
+        "name": {
+          "value": "Configure <%= pluginKey %><%= propertyAlias %>"
+        },
+        "context": "product",
+        "url": "/plugins/servlet/ac/<%= pluginKey %>/<%= pluginKey %>-configure",
+        "target": {
+          "type": "page"
+        },
+        "conditions": [
+          {
+            "condition": "user_is_admin"
+          }
+        ]
+      }
+    ],
+    "jiraWorkflowConditions": [],
+    "jiraWorkflowValidators": []
+  }
+}
