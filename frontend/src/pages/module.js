@@ -48,19 +48,19 @@ export default function ModulePage(props) {
   })
  */
 export const getServerSideProps = context => {
-  const { req } = context;
-  if (req.query.jwt) {
+  const { query } = context;
+  if (query.jwt) {
     return withServerSideAuth(getServerSidePropsModule)(context);
   } else {
     return getServerSidePropsModule(context);
   }
 };
 
-async function getServerSidePropsModule(context) {
-  const { req } = context;
+async function getServerSidePropsModule(ctx) {
+  const { req, query } = ctx;
 
   const props = {
-    location: req.query.location
+    location: query.location
   };
 
   if (req.context.clientInfo) {

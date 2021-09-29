@@ -122,10 +122,16 @@ function MyApp({ Component, pageProps }) {
       )}
       {/* These two are required to communicate via postmessage to JIRA */}
       {IS_DEV && (
-        <Script src="https://connect-cdn.atl-paas.net/all-debug.js"></Script>
+        <Script
+          src="https://connect-cdn.atl-paas.net/all-debug.js"
+          strategy="beforeInteractive"
+        ></Script>
       )}
       {!IS_DEV && (
-        <Script src="https://connect-cdn.atl-paas.net/all.js"></Script>
+        <Script
+          src="https://connect-cdn.atl-paas.net/all.js"
+          strategy="beforeInteractive"
+        ></Script>
       )}
     </div>
   );

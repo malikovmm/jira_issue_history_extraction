@@ -8,7 +8,7 @@
  * NOTE: Changing this file or the templates/atlassian-connect.json file itself does not
  *       force Jira to reload them. You must re-install the pluging after making such changes.
  */
-import { template } from 'underscore';
+import { compact, template } from 'underscore';
 
 const atlassianConectTemplate = template(
   JSON.stringify(require('../templates/atlassian-connect.json'))
@@ -31,6 +31,9 @@ AtlassianConnect.getInitialProps = ({ res }) => {
   if (process.env.NODE_ENV !== 'development') {
     res.setHeader('Cache-Control', `max-age=${60 * 60}`);
   }
+
+  const propertyAlias = process.env.STAGE !== 'prod' ? process.env.STAGE : '';
+
   res.write(
     JSON.stringify(
       JSON.parse(
@@ -39,8 +42,8 @@ AtlassianConnect.getInitialProps = ({ res }) => {
           localBaseUrl: process.env.NEXT_PUBLIC_DEPLOY_URL,
           pluginKey: process.env.PLUGIN_KEY,
           stage: process.env.STAGE,
-          propertyAlias: process.env.STAGE !== 'prod' ? process.env.STAGE : '',
-          name: process.env.PLUGIN_NAME,
+          propertyAlias,
+          name: compact([process.env.PLUGIN_NAME, propertyAlias]).join('-'),
           description: process.env.PLUGIN_DESCRIPTION
         })
       ),
