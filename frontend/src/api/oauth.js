@@ -21,11 +21,15 @@ import { cleanObject } from '../utils';
 const fetch = nfbFactory({
   delay: 1 * 1000,
   shouldRetryError: error => {
-    console.log('shouldRetryError', error);
-    return true;
+    return error.status !== 404 && error.status !== 401;
   },
   fetch: (...args) => {
-    return fetchAPI(...args);
+    return fetchAPI(...args).then(resp => {
+      if (resp.status !== 200) {
+        return Promise.reject(resp);
+      }
+      return resp;
+    });
   }
 });
 
@@ -131,12 +135,12 @@ export function getJWTToken(clientValue, req) {
 
 // makes an ajax request to jira on behalf of the addon or the user
 export async function hostRequest(clientValue, options) {
-  const { method = 'get', accountId } = options;
+  const { method = 'get', accountId, raw, qs, search = qs } = options;
   const httpMethod = method === 'del' ? 'delete' : method;
 
   let uri = URI(`${clientValue.baseUrl}${options.url}`);
-  if (options.search) {
-    uri = uri.search(options.search);
+  if (search) {
+    uri = uri.search(search);
   }
   const token = accountId
     ? `Bearer ${await getBearerToken(clientValue, accountId, options).then(
@@ -173,6 +177,10 @@ export async function hostRequest(clientValue, options) {
     },
     body: options.body
   }).then(async response => {
+    if (raw) {
+      return response;
+    }
+
     const decodedResponse = await response.text().then(responseText => {
       try {
         return JSON.parse(responseText);
@@ -233,3 +241,79 @@ export async function saveBearerToken(clientValue, newToken) {
     return clientValue;
   });
 }
+
+/**
+ * Mock up a compatible version of httpClient
+ * that can be used mostly interchangeably
+ * @param {*} clientValue
+ * @param {*} accountId
+ * @returns
+ */
+function getHTTPClient(clientValue, accountId, config) {
+  const httpClient = ['get', 'post', 'del', 'put'].reduce(
+    (acc, key) => {
+      acc[key] = ({ uri: url, json, ...options }, callback) => {
+        return hostRequest(clientValue, {
+          url,
+          accountId,
+          ...options,
+          method: key === 'del' ? 'delete' : key,
+          raw: true
+        })
+          .then(async response => {
+            response.statusCode = response.status;
+
+            const body = json ? await response.json() : await response.text();
+            if (callback) {
+              callback(null, response, body);
+            }
+
+            return body;
+          })
+          .catch(async e => {
+            e.statusCode = e.status;
+
+            const body =
+              !!e.text &&
+              (await e.text().then(text => {
+                try {
+                  return json ? JSON.parse(text) : text;
+                } catch (e) {
+                  return text;
+                }
+              }));
+
+            if (callback) {
+              callback(e, e, body || null);
+            } else {
+              return Promise.reject(body);
+            }
+
+            // Don't return a rejection if using callbacks because it will
+            // result in an unhandled promise rejection
+            return body;
+          });
+      };
+      return acc;
+    },
+    {
+      addon: config
+        ? {
+            config
+          }
+        : undefined,
+      asUserByAccountId: accountId => {
+        return getHTTPClient(clientValue, accountId, config);
+      }
+    }
+  );
+
+  return httpClient;
+}
+
+module.exports = {
+  getBearerToken,
+  createJwtPayload,
+  hostRequest,
+  getHTTPClient
+};
