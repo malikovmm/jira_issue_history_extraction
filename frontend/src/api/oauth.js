@@ -128,7 +128,11 @@ export function getJWTToken(clientValue, req) {
     clientKey: clientValue.clientKey,
     productType: clientValue.productType
   });
-  const jwtToken = jwt.encode(jwtPayload, clientValue.sharedSecret, 'HS256');
+  const jwtToken = jwt.encodeSymmetric(
+    jwtPayload,
+    clientValue.sharedSecret,
+    'HS256'
+  );
 
   return jwtToken;
 }

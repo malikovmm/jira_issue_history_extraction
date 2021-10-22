@@ -16,7 +16,9 @@
     "type": "jwt"
   },
   "apiMigrations": {
-    "context-qsh": true
+    "gdpr": true,
+    "context-qsh": true,
+    "signed-install": true
   },
   "lifecycle": {
     "installed": "/api/installed",

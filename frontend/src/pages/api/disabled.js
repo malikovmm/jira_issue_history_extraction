@@ -39,8 +39,7 @@ export default withDB(async function Disabled(req, res) {
           logId: req.context.logId
         });
         return res.json({
-          success: true,
-          message: clientInfo
+          success: true
         });
       },
       error => {

@@ -40,8 +40,7 @@ export default withDB(async function Enabled(req, res) {
           logId: req.context.logId
         });
         return res.json({
-          success: true,
-          message: clientInfo
+          success: true
         });
       },
       error => {

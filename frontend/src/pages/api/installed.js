@@ -32,8 +32,7 @@ export default withDB(async function Installed(req, res) {
           logId: req.context.logId
         });
         return res.json({
-          success: true,
-          message: clientInfo
+          success: true
         });
       },
       error => {

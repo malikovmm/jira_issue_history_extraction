@@ -6,7 +6,7 @@
  * NOTE: this endpoint is pretty unreliable in the sense that there are many cases
  *       where this is not called by Atlassian for various reasons.
  */
-import { authenticate, saveClientInfo } from '../../api/atlassian';
+import { verifyInstallation } from '../../api/atlassian';
 import { createLifecyleRecord } from '../../api/lifecycle';
 import { withDB } from '../../database';
 
@@ -17,32 +17,20 @@ export default withDB(async function Uninstalled(req, res) {
 
   console.log('UNINSTALLING');
 
-  return authenticate(req, false, { skipLicense: true })
-    .then(async ({ clientInfo }) => {
-      return saveClientInfo({
-        logId: req.context.logId,
-        clientId: clientInfo.clientId,
-        // we use clientInfo.clientKey here because uninstalled should not be trying to change clientKey
-        clientKey: clientInfo.clientKey,
-        value: {
-          ...clientInfo.value,
-          ...req.body
-        }
-      });
-    })
+  return verifyInstallation(req)
     .then(
       async clientInfo => {
+        console.log('UNINSTALLING', clientInfo);
         await createLifecyleRecord({
           addonKey: req.body.key,
           clientId: clientInfo.clientId,
           clientKey: clientInfo.clientKey,
-          eventType: 'UNINSTALLED',
+          eventType: 'INSTALLED',
           value: req.body,
           logId: req.context.logId
         });
         return res.json({
-          success: true,
-          message: clientInfo
+          success: true
         });
       },
       error => {
@@ -61,7 +49,7 @@ export default withDB(async function Uninstalled(req, res) {
         error: message
       });
     })
-    .finally(() => {
+    .finally(response => {
       const endTime = Date.now();
       console.log(
         'UNINSTALL FINISHED',
@@ -72,5 +60,6 @@ export default withDB(async function Uninstalled(req, res) {
           duration: endTime - startTime
         })
       );
+      return response;
     });
 });

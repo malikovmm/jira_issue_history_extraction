@@ -84,7 +84,10 @@ export function verifyInstallation(req) {
           console.log(
             `Found existing settings for client ${clientInfo.clientKey}. Authenticating reinstall request.`
           );
-          return authenticate(req, false, { skipLicense: true }).then(() =>
+          return authenticate(req, false, {
+            skipLicense: true,
+            allowNewClientInfo: true
+          }).then(() =>
             saveClientInfo({
               logId: req.context.logId,
               clientId: clientInfo.clientId,
@@ -203,8 +206,18 @@ export async function authenticate(
   }
 
   let unverifiedClaims;
+  let verifiedClaims;
   try {
-    unverifiedClaims = jwt.decode(token, '', true); // decode without verification;
+    const kid = jwt.getKeyId(token);
+    if (kid) {
+      const publicKey = await fetch(
+        `https://connect-install-keys.atlassian.com/${kid}`
+      ).then(response => response.text());
+      verifiedClaims = jwt.decodeAsymmetric(token, publicKey, 'RS256'); // decode without verification;
+      unverifiedClaims = verifiedClaims;
+    } else {
+      unverifiedClaims = jwt.decodeSymmetric(token, '', 'HS256', true); // decode without verification;
+    }
   } catch (e) {
     return sendError(400, 'Unable to decode JWT token: ' + e.message);
   }
@@ -232,26 +245,27 @@ export async function authenticate(
   }
 
   const clientInfo = await findClientInfoByClientKey(clientKey, req.context);
-  if (!clientInfo) {
+  if (!clientInfo && !verifiedClaims && !options.allowNewClientInfo) {
     return sendError(
       401,
       `Could not find stored client data for ${clientKey}. Is this client registered?`
     );
   }
 
-  const secret = clientInfo.value.sharedSecret;
-  if (!secret) {
-    return sendError(
-      401,
-      `Could not find JWT sharedSecret in stored client data for ${clientKey}`
-    );
-  }
+  if (!verifiedClaims) {
+    const secret = clientInfo.value.sharedSecret;
+    if (!secret) {
+      return sendError(
+        401,
+        `Could not find JWT sharedSecret in stored client data for ${clientKey}`
+      );
+    }
 
-  let verifiedClaims;
-  try {
-    verifiedClaims = jwt.decode(token, secret, false);
-  } catch (e) {
-    return sendError(400, `Unable to decode JWT token: ${e}`);
+    try {
+      verifiedClaims = jwt.decodeSymmetric(token, secret, 'HS256', false);
+    } catch (e) {
+      return sendError(400, `Unable to decode JWT token: ${e}`);
+    }
   }
 
   const expiry = verifiedClaims.exp + 60 * jwtTokenValidityInMinutes; // Give some extra wiggle room
@@ -325,29 +339,33 @@ export async function authenticate(
   req.context = {
     ...req.context,
     accountId,
-    clientId: clientInfo.clientId,
+    clientId: clientInfo && clientInfo.clientId,
     clientKey,
     clientInfo,
-    sessionToken: createSessionToken({
-      accountId,
-      ...clientInfo.value,
-      clientId: clientInfo.clientId,
-      context: verifiedClaims.context
-    }),
+    sessionToken:
+      clientInfo &&
+      createSessionToken({
+        accountId,
+        ...clientInfo.value,
+        clientId: clientInfo.clientId,
+        context: verifiedClaims.context
+      }),
     verifiedClaims
   };
 
   return {
     accountId,
-    clientId: clientInfo.clientId,
+    clientId: clientInfo && clientInfo.clientId,
     clientKey,
     clientInfo,
-    sessionToken: createSessionToken({
-      accountId,
-      ...clientInfo.value,
-      clientId: clientInfo.clientId,
-      context: verifiedClaims.context
-    }),
+    sessionToken:
+      clientInfo &&
+      createSessionToken({
+        accountId,
+        ...clientInfo.value,
+        clientId: clientInfo.clientId,
+        context: verifiedClaims.context
+      }),
     verifiedClaims
   };
 }
@@ -357,7 +375,7 @@ export function createSessionToken(authorizer) {
   const { accountId, clientKey, context = {}, sharedSecret, clientId } =
     authorizer || {};
   var now = moment().utc();
-  var token = jwt.encode(
+  var token = jwt.encodeSymmetric(
     {
       iss: process.env.PLUGIN_KEY,
       sub: accountId,
@@ -369,7 +387,8 @@ export function createSessionToken(authorizer) {
         clientId
       }
     },
-    sharedSecret
+    sharedSecret,
+    'HS256'
   );
 
   return token;
