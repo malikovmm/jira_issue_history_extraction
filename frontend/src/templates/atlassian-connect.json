@@ -32,7 +32,7 @@
     "generalPages": [
       {
         "key": "<%= pluginKey %>-top",
-        "url": "/module?location=system.top.navigation.bar",
+        "url": "/modulePage?location=system.top.navigation.bar",
         "location": "system.top.navigation.bar",
         "cacheable": false,
         "weight": 999,
@@ -59,7 +59,7 @@
     "webPanels": [
       {
         "key": "<%= pluginKey %>-right",
-        "url": "/module?location=atl.jira.view.issue.right.context",
+        "url": "/modulePage?location=atl.jira.view.issue.right.context",
         "location": "atl.jira.view.issue.right.context",
         "cacheable": false,
         "weight": 999,
@@ -79,7 +79,7 @@
       },
       {
         "key": "<%= pluginKey %>-left",
-        "url": "/module?location=atl.jira.view.issue.left.context",
+        "url": "/modulePage?location=atl.jira.view.issue.left.context",
         "location": "atl.jira.view.issue.left.context",
         "cacheable": false,
         "weight": 999,
@@ -101,7 +101,7 @@
     "dialogs": [
       {
         "key": "<%= pluginKey %>-dialog",
-        "url": "/module?location=dialog&dialog=1",
+        "url": "/modulePage?location=dialog&dialog=1",
         "cacheable": false,
         "options": {
           "header": {
@@ -124,7 +124,7 @@
           "value": "<%= pluginKey %><%= propertyAlias %>"
         },
         "iconUrl": "/images/pluginLogo.png",
-        "url": "/module?location=project-sidebar1",
+        "url": "/modulePage?location=project-sidebar1",
         "conditions": [
           {
             "and": [
@@ -137,7 +137,7 @@
       }
     ],
     "configurePage": {
-      "url": "/module?location=configure",
+      "url": "/modulePage?location=configure",
       "key": "<%= pluginKey %>-configure",
       "name": {
         "value": "Configure <%= pluginKey %><%= propertyAlias %>"
@@ -151,7 +151,7 @@
     },
     "adminPages": [
       {
-        "url": "/module?location=admin-page",
+        "url": "/modulePage?location=admin-page",
         "key": "<%= pluginKey %>-admin-page",
         "name": {
           "value": "Admin <%= pluginKey %><%= propertyAlias %>"
@@ -198,6 +198,18 @@
       }
     ],
     "jiraWorkflowConditions": [],
-    "jiraWorkflowValidators": []
+    "jiraWorkflowValidators": [],
+    "webhooks": [
+      {
+        "event": "jira:issue_created",
+        "url": "/api/hook",
+        "excludeBody": false
+      },
+      {
+        "event": "jira:issue_updated",
+        "url": "/api/hook",
+        "excludeBody": false
+      }
+    ]
   }
 }

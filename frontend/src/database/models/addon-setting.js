@@ -26,7 +26,7 @@ export default function AddonSettingModel(sequelize, DataTypes) {
         allowNull: true,
         get: function () {
           const val = this.getDataValue('value');
-          return val ? JSON.parse(val) : val;
+          return val;
         }
       }
     },

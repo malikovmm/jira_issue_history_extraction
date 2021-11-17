@@ -47,7 +47,7 @@ export function findClientInfoByClientKey(clientKey) {
     }
   }).then(response => {
     if (response) {
-      const clientInfo = response.toJSON();
+      const clientInfo = JSON.parse(JSON.stringify({ ...response.dataValues }));
       return clientInfo;
     }
   });
@@ -188,7 +188,7 @@ export async function authenticate(
           token = createSessionToken({
             ...clientInfo.value,
             // Blank out clientId because this is a dev token and we still want to do the normal checks.
-            clientId: undefined,
+            // clientId: process.env.CLIENT_KEY,
             accountId: process.env.ACCOUNT_ID
           });
         } else {
@@ -202,6 +202,9 @@ export async function authenticate(
   }
 
   if (!token) {
+    console.log(
+      'ATLASSiAN>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> !TOKEN!!!!!!!!!!!!!!!!!!'
+    );
     return sendError(401, 'Could not find authentication data on request');
   }
 
@@ -421,4 +424,100 @@ export async function getAddonDetails(context) {
     method: 'GET',
     url: `/rest/atlassian-connect/1/addons/${process.env.PLUGIN_KEY}`
   });
+}
+
+export async function searchIssues(context, options = {}) {
+  const { maxResult = 100, startAt = 0, fields, expand } = options;
+  return await hostRequest(context.clientInfo.value, {
+    accountId: context.accountId,
+    url: `/rest/api/3/search?maxResults=${maxResult}&startAt=${startAt}${
+      fields ? '&fields=' + fields.join(',') : ''
+    }${expand ? '&expand=' + expand.join(',') : ''}`
+  });
+}
+export async function getProjectDetails(context) {
+  return await hostRequest(context.clientInfo.value, {
+    accountId: context.accountId,
+    url: '/rest/api/3/project'
+  });
+}
+
+export async function getIssueChangelog(context, options = {}) {
+  const { maxResult = 100, startAt = 0, issueKey } = options;
+  if (!issueKey) throw 'issueKey is required';
+  return await hostRequest(context.clientInfo.value, {
+    accountId: context.accountId,
+    url: `/rest/api/3/issue/${issueKey}/changelog?startAt=${startAt}&maxResult=${maxResult}`
+  });
+}
+export async function getAllIssues(context) {
+  const issues = await searchIssues(context, {
+    fields: ['comment'],
+    expand: ['changelog']
+  });
+  if (issues.total > issues.maxResults) {
+    const numberOfRequests = Math.ceil(issues.total / issues.maxResults) - 1;
+    for (
+      let i = 0, startAt = issues.maxResults;
+      i < numberOfRequests;
+      i++, startAt += issues.maxResults
+    ) {
+      const fetched = await searchIssues(context, {
+        fields: ['comment'],
+        expand: ['changelog'],
+        startAt
+      });
+      issues.issues.push(...fetched.issues);
+    }
+  }
+  return issues;
+}
+
+export async function getAllIssueChangelogs(context, issue) {
+  const preparedChanges = [];
+  console.log('.changelog', issue);
+  for (let history of issue.changelog.histories) {
+    for (let item of history.items) {
+      preparedChanges.push({
+        changeId: history.id,
+        issueKey: issue.key,
+        changedAt: history.created,
+        authorId: history.author.accountId,
+        field: item.field,
+        fieldType: item.fieldtype,
+        fieldId: item.fieldId
+      });
+    }
+  }
+  if (issue.changelog.total > issue.changelog.maxResults) {
+    const numberOfRequests =
+      Math.ceil(issue.changelog.total / issue.changelog.maxResults) - 1;
+    for (
+      let i = 0, startAt = issue.changelog.maxResults;
+      i < numberOfRequests;
+      i++, startAt += issue.changelog.maxResults
+    ) {
+      const fetched = await getIssueChangelog(context, {
+        issueKey: issue.key,
+        startAt,
+        maxResult: issue.changelog.maxResults
+      });
+      for (let val of fetched.values) {
+        preparedChanges.push(
+          ...val.items.map(item => {
+            return {
+              changeId: val.id,
+              issueKey: issue.key,
+              changedAt: val.created,
+              authorId: val.author.accountId,
+              field: item.field,
+              fieldType: item.fieldtype,
+              fieldId: item.fieldId
+            };
+          })
+        );
+      }
+    }
+  }
+  return preparedChanges;
 }

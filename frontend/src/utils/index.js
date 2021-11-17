@@ -64,7 +64,7 @@ export function getHeader(name = '', headers = {}) {
 }
 
 // @TODO: fill in what this function does and why it exists
-export function promiseTimeout(fn, maxDurationMS = 5000) {
+export function promiseTimeout(fn, maxDurationMS = 50000) {
   return new Promise((resolve, reject) => {
     var timeout = setTimeout(() => {
       timeout = undefined;
