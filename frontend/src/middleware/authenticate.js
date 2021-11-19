@@ -27,10 +27,7 @@ export default function auth(next, options = {}) {
 export function withServerSideAuth(handler, options = {}) {
   return async context => {
     const { req, query } = context;
-    return authenticate(
-      { ...req, query: query || req.query },
-      !!options.skipQshVerification
-    )
+    return authenticate({ ...req, query: query || req.query }, true)
       .then(authInfo => {
         context.req.context = context.req.context || {};
         context.req.context = {

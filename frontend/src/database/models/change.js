@@ -14,7 +14,7 @@ export default function (sequelize, DataTypes) {
         allowNull: false
       },
       issueKey: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.STRING,
         allowNull: false
       },
       changedAt: {

@@ -202,9 +202,6 @@ export async function authenticate(
   }
 
   if (!token) {
-    console.log(
-      'ATLASSiAN>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> !TOKEN!!!!!!!!!!!!!!!!!!'
-    );
     return sendError(401, 'Could not find authentication data on request');
   }
 
@@ -475,7 +472,6 @@ export async function getAllIssues(context) {
 
 export async function getAllIssueChangelogs(context, issue) {
   const preparedChanges = [];
-  console.log('.changelog', issue);
   for (let history of issue.changelog.histories) {
     for (let item of history.items) {
       preparedChanges.push({
