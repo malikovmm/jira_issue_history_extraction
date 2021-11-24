@@ -34,3 +34,5 @@ export const HAS_AP_USER =
   HAS_AP && !!window.AP.user && window.AP.user.getCurrentUser;
 
 export const SKIP_LICENSE = /no-license/.test(process.env.AC_OPTS);
+
+export const DEFAULT_CHANGES_ON_PAGE = 15;

@@ -1,267 +1,289 @@
-import {
-  useContext,
-  useState,
-  useEffect,
-  forwardRef,
-  useMemo,
-  useCallback
-} from 'react';
-import { useAsync } from 'react-use';
+import { useState, useMemo, useEffect } from 'react';
 import styled from 'styled-components';
-import { APContext, fetch as _fetch } from '../ap';
-import {
-  getAddonDetails,
-  getProjectDetails,
-  getAllIssues,
-  getAllIssueChangelogs
-} from '../api/atlassian';
+import { getUsers } from '../api/atlassian';
 import { withServerSideAuth } from '../middleware/authenticate';
-
-import Link from 'next/link';
-import AKPagination from '@atlaskit/pagination';
-import Button from '@atlaskit/button';
-import URI from 'urijs';
-
-import ChevronLeftIcon from '@atlaskit/icon/glyph/chevron-left';
-import ChevronRightIcon from '@atlaskit/icon/glyph/chevron-right';
-import {
-  bulkCreateChanges,
-  countChanges,
-  getChanges
-} from './../api/changeLog';
-import Router, { useRouter } from 'next/router';
+import { fetch } from '../ap';
+import Select from '@atlaskit/select';
+import Pagination from './../components/pagination';
+import { getChanges } from './../api/changeLog';
+import { useRouter } from 'next/router';
 import { inspect } from 'util';
 import { getToken } from '../ap/request';
+import { DynamicTableStateless } from '@atlaskit/dynamic-table';
+import Avatar from '@atlaskit/avatar';
+
+import Lozenge from '@atlaskit/lozenge';
+import { DEFAULT_CHANGES_ON_PAGE } from '../constants';
+import {
+  getValidatedOrder,
+  getValidatedSortKey,
+  getValidatedSortOrder
+} from '../database/util';
+
 const DataContainer = styled.div`
-  height: 100vh;
+  width: 80%;
+  margin: 0 auto;
 `;
-const KeyButton = styled.span`
-  padding: 5px;
-  border: 2px solid gray;
-  border-radius: 4px;
-  cursor: pointer;
+const IssueLink = styled.a``;
+const TableContainer = styled.div``;
+const UserCell = styled.div`
+  display: flex;
+  align-items: center;
 `;
+const UserName = styled.span`
+  margin-left: 5px;
+`;
+const FieldContainer = styled.span``;
+const ChangedContainer = styled.span``;
 
-const CustomButton = styled(Button)`
-  &.pagination {
-    background-color: transparent;
+const LozengeActionWrapper = props => {
+  const lozengeProps = {};
+  switch (props.action) {
+    case 'create': {
+      lozengeProps.appearance = 'success';
+      break;
+    }
+    case 'delete': {
+      lozengeProps.appearance = 'removed';
+      break;
+    }
+    case 'update': {
+      lozengeProps.appearance = 'new';
+      break;
+    }
+    default: {
+      throw 'props must be create or delete or update';
+    }
   }
-`;
 
-const Row = ({ objKey, value, ix }) => {
-  const [visible, setVisible] = useState(false);
-  return (
-    <>
-      <div key={ix} style={{ margin: '20px 0' }}>
-        <KeyButton onClick={() => setVisible(!visible)}>
-          {ix + 1} - ({objKey}):
-        </KeyButton>
-        {visible &&
-          value.map(it => (
-            <div key={it.id}>
-              {Object.entries(it).map(([k, v], ix) => (
-                <div key={v.toString() + ix}>
-                  <span>{k}</span> : <p>{v.toString()}</p>
-                </div>
-              ))}
-            </div>
-          ))}
-        {/* {visible && <pre>{JSON.stringify(value, null, 2)}</pre>} */}
-      </div>
-    </>
-  );
+  return <Lozenge {...lozengeProps}>{props.children}</Lozenge>;
+};
+const createRows = (doInit, changes, stateChanges) => {
+  const mapCb = change => ({
+    key: `row-${change.id}`,
+    cells: [
+      {
+        key: `id_${change.id}`,
+        content: <div>{change.id}</div>
+      },
+      {
+        key: `user_${change.id}`,
+        content: (
+          <UserCell>
+            <Avatar
+              appearance="circle"
+              src={change.editorData.avatarUrls['24x24']}
+              size="small"
+              name={change.editorData.displayName}
+            />
+            <UserName>{change.editorData.displayName}</UserName>
+          </UserCell>
+        )
+      },
+      {
+        key: `issue_${change.id}`,
+        content: (
+          <IssueLink
+            target="_blank"
+            href={`${process.env.NEXT_PUBLIC_SERVER_URL}/browse/${change.issueKey}`}
+          >
+            {change.issueKey}
+          </IssueLink>
+        )
+      },
+      {
+        key: `field_${change.id}`,
+        content: <FieldContainer>{change.field}</FieldContainer>
+      },
+      {
+        key: `chngedat_${change.id}`,
+        content: (
+          <ChangedContainer>
+            {new Date(change.changedAt).toUTCString()}
+          </ChangedContainer>
+        )
+      },
+      {
+        key: `action_${change.id}`,
+        content: (
+          <LozengeActionWrapper action={change.action}>
+            {change.action}
+          </LozengeActionWrapper>
+        )
+      }
+    ]
+  });
+  if (!doInit && changes) {
+    return changes.map(mapCb);
+  } else {
+    return stateChanges.map(mapCb);
+  }
 };
 export default function ModulePage(props) {
-  const [loading, setLoading] = useState(false);
-  const [jwt, setJwt] = useState('');
-  const { pathname, query, isReady, push } = useRouter();
-  const search = { page: 1 };
+  const [sortKey, setSortKey] = useState(props.sortKey || 'id');
+  const [sortOrder, setSortOrder] = useState(props.sortOrder || 'ASC');
+  const [limit, setLimit] = useState(props.limit);
+  const router = useRouter();
+  const [routerLoading, setRouterLoading] = useState(false);
+  const [fetching, setFetching] = useState(false);
+  const [initChanges, setInitChanges] = useState([]);
+  const [changescount, setChangescount] = useState(1);
+  const pushQuery = (page, limit) => {
+    getToken().then(jwt => {
+      if (!page) router.query['pageNumber'] = ~~router.query['pageNumber'] || 1;
+      else router.query['pageNumber'] = page;
+      if (!limit)
+        router.query['limit'] =
+          ~~router.query['limit'] || DEFAULT_CHANGES_ON_PAGE;
+      else router.query['limit'] = limit;
+      router.query['jwt'] = jwt;
+      router.query['sortKey'] = sortKey;
+      router.query['sortOrder'] = sortOrder;
+      router.push({ pathname: router.pathname, query: router.query });
+    });
+  };
+
+  const totalPages = useMemo(() => {
+    const count = props.changesTotal ? props.changesTotal : changescount;
+
+    const totalPages = Math.ceil(count / limit) ? Math.ceil(count / limit) : 1;
+    return totalPages;
+  }, [props.changesTotal, limit, changescount]);
 
   useEffect(() => {
-    getToken().then(data => {
-      setJwt(data);
-    });
-  }, []);
-  const toPage = useMemo(
-    () =>
-      URI(pathname)
-        .search(search || {})
-        .toString(),
-    [pathname, search]
-  );
-  const router = useRouter();
+    pushQuery(null, limit);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortKey, sortOrder, limit]);
+  useEffect(() => {
+    setChangescount(props.changesTotal);
+  }, [props.changesTotal]);
+  useEffect(() => {
+    const handleStart = () => {
+      setRouterLoading(true);
+    };
+    const handleComplete = () => {
+      setRouterLoading(false);
+    };
 
-  const [value, setValue] = useState('');
-  const [loadedchangelogs, setLoadedchangelogs] = useState([]);
-  const AP = useContext(APContext);
-  const clientProjects = useAsync(() => _fetch('/rest/api/3/project'));
-  const apiRequest = useAsync(() => _fetch('/api/test'));
+    router.events.on('routeChangeStart', handleStart);
+    router.events.on('routeChangeComplete', handleComplete);
+    router.events.on('routeChangeError', handleComplete);
+
+    return () => {
+      router.events.off('routeChangeStart', handleStart);
+      router.events.off('routeChangeComplete', handleComplete);
+      router.events.off('routeChangeError', handleComplete);
+    };
+  });
+  useEffect(() => {
+    if (props.doInit && (!props.changes || !props.changes.length)) {
+      setFetching(true);
+      fetch('/api/initChanges', {
+        method: 'GET'
+      })
+        .then(it => {
+          setInitChanges(it.rows);
+          setChangescount(it.count);
+        })
+        .catch(error => {
+          setInitChanges([]);
+          console.log('Failed to fetch', error);
+        })
+        .finally(() => {
+          setFetching(false);
+        });
+    }
+  }, [props.doInit, props.changes]);
+  // eslint-disable-next-line no-unused-vars
   const otherpropstemp = JSON.parse(JSON.stringify(props));
   otherpropstemp.projectsAsUser = null;
   otherpropstemp.location = null;
   otherpropstemp.addonDetails = null;
-  const onPageClick = undefined;
-  const handlePagingClick = useCallback(
-    page => {
-      if (onPageClick) {
-        return onPageClick(page);
-      }
-    },
-    [onPageClick]
-  );
-  const renderPrevNextButton = next => {
-    return forwardRef(function RenderPrevButton(props, ref) {
-      const toNumberPage = next ? page + 1 : page - 1;
-      const href = toPage
-        ? URI(toPage)
-            .setSearch({ page: toNumberPage })
-            .setSearch({ jwt: jwt })
-            .toString()
-        : undefined;
-      const Button = (
-        <CustomButton
-          ref={ref}
-          href={href}
-          className={
-            next ? 'pagination pagination-next' : 'pagination pagination-prev'
-          }
-          onClick={() => handlePagingClick(toNumberPage)}
-          iconAfter={
-            next ? (
-              <ChevronRightIcon size="medium" />
-            ) : (
-              <ChevronLeftIcon size="medium" />
-            )
-          }
-          isDisabled={next ? pages.length === page : page === 1}
-        />
-      );
-      return href ? <Link href={href}>{Button}</Link> : Button;
-    });
-  };
 
-  const renderLinks = forwardRef(function RenderLinks(props, ref) {
-    const { page: pageLink } = props;
-    const href = toPage
-      ? URI(toPage).setSearch({ page: pageLink }).toString()
-      : undefined;
-    const isSelected = pageLink === page;
-    const button = isSelected ? (
-      <Button
-        ref={ref}
-        href={href}
-        className="pagination pagination-page"
-        onClick={() => handlePagingClick(pageLink)}
-        isSelected={isSelected}
-      >
-        {pageLink}
-      </Button>
-    ) : (
-      <CustomButton
-        ref={ref}
-        href={href}
-        className="pagination pagination-page"
-        onClick={() => handlePagingClick(pageLink)}
-        isSelected={isSelected}
-      >
-        {pageLink}
-      </CustomButton>
-    );
-    return href ? <Link href={href}>{button}</Link> : button;
-  });
-  const totalPages = 2;
-  const page = 1;
-  const pages = useMemo(
-    () => Array.from(Array(totalPages)).map((val, i) => i + 1),
-    [totalPages]
-  );
+  const rows = createRows(props.doInit, props.changes, initChanges);
+
   return (
     <>
       <DataContainer>
-        <div style={{ marginBottom: 10 }}>LOCATION: {props.location}</div>
-        {props.query && (
-          <div style={{ marginBottom: 10 }}>
-            query: {JSON.stringify(props.query)}
-          </div>
-        )}
-        <div style={{ marginBottom: 10 }}>USER: {JSON.stringify(AP.user)}</div>
-        {/* {props.projectsAsUser && (
-            <div style={{ marginBottom: 10 }}>
-              projectsAsUserFromServer:{' '}
-              {JSON.stringify(props.projectsAsUser.map(project => project.key))}
-            </div>
-          )}
-          {props.addonDetails && (
-            <div style={{ marginBottom: 10 }}>
-              addonDetailsAsServer: {JSON.stringify(props.addonDetails)}
-            </div>
-          )} */}
-        <div style={{ marginBottom: 10 }}>
-          projectsAsUserClient:{' '}
-          {clientProjects.value &&
-            JSON.stringify(clientProjects.value.map(project => project.key))}
-        </div>
-        <div style={{ marginBottom: 10 }}>
-          apiRequest: {apiRequest && JSON.stringify(apiRequest)}
-        </div>
-        <br />
-        <br />
-        <input
-          type="text"
-          placeholder="Enter issue key"
-          value={value}
-          onChange={e => setValue(e.target.value)}
+        <TableContainer>
+          <DynamicTableStateless
+            caption={
+              <span>
+                {props.doInit && fetching
+                  ? 'The first launch may take a few minutes, please wait...'
+                  : 'Change list'}
+              </span>
+            }
+            sortKey={sortKey}
+            isLoading={routerLoading || fetching}
+            loadingSpinnerSize={'small'}
+            head={{
+              cells: [
+                {
+                  key: 'id',
+                  content: 'Id',
+                  isSortable: true
+                },
+                {
+                  key: 'editor',
+                  content: 'Editor'
+                },
+                {
+                  key: 'issueKey',
+                  content: 'Issue',
+                  isSortable: true
+                },
+                {
+                  key: 'field',
+                  content: 'Field',
+                  isSortable: true
+                },
+                {
+                  key: 'changedAt',
+                  content: 'Changed at',
+                  isSortable: true
+                },
+                {
+                  key: 'action',
+                  content: 'Action',
+                  isSortable: true
+                }
+              ]
+            }}
+            rows={rows}
+            onSort={a => {
+              setSortKey(a.key);
+              if (sortOrder.toLowerCase() == 'asc') {
+                setSortOrder('DESC');
+              }
+              if (sortOrder.toLowerCase() == 'desc') {
+                setSortOrder('ASC');
+              }
+            }}
+          />
+        </TableContainer>
+        <Pagination
+          pageNumber={props.pageNumber}
+          pushQuery={pushQuery}
+          totalPages={totalPages}
+          limit={limit}
         />
-        <button
-          onClick={async () => {
-            const response = await _fetch(
-              `/rest/api/3/issue/${value}/changelog`
-            );
-            setLoadedchangelogs(response);
+        <Select
+          options={[
+            { label: '10', value: 10 },
+            { label: '15', value: 15 },
+            { label: '20', value: 20 },
+            { label: '25', value: 25 },
+            { label: '30', value: 30 },
+            { label: '35', value: 35 },
+            { label: '40', value: 40 }
+          ]}
+          value={limit}
+          onChange={a => {
+            setLimit(a.value);
           }}
-        >
-          Search
-        </button>
-        <button
-          onClick={() => {
-            router.query['pageNumber'] = '2';
-            router.query['limit'] = '20';
-            router.query['jwt'] = jwt;
-            router.push({ pathname: router.pathname, query: router.query });
-          }}
-        >
-          page+
-        </button>
-        <button
-          onClick={() => {
-            router.query['pageNumber'] = '1';
-            router.query['limit'] = '20';
-            router.query['jwt'] = jwt;
-            router.push({ pathname: router.pathname, query: router.query });
-          }}
-        >
-          page-
-        </button>
-        <AKPagination
-          components={{
-            Page: renderLinks,
-            Previous: renderPrevNextButton(false),
-            Next: renderPrevNextButton(true)
-          }}
-          selectedIndex={page - 1}
-          pages={pages}
+          placeholder="Choose a limit"
         />
-        <div>
-          otherProps:{' '}
-          <div>
-            <Row ix={22} objKey={'objKey'} value={loadedchangelogs} />
-            {Object.entries(otherpropstemp)
-              .filter(it => it[1])
-              .map(([objKey, value], ix) => (
-                <Row key={ix} ix={ix} objKey={objKey} value={value} />
-              ))}
-          </div>
-        </div>
       </DataContainer>
     </>
   );
@@ -279,66 +301,71 @@ export default function ModulePage(props) {
 export const getServerSideProps = context => {
   const { query } = context;
   if (query.jwt) {
-    console.log('>>>>>>>>>>>>>>>>WITH JWT');
     return withServerSideAuth(getServerSidePropsModule)(context);
   } else {
-    console.log('>>>>>>>>>>>>>>>>WITHOUT JWT');
     return getServerSidePropsModule(context);
   }
 };
 
-// const ins = obj =>
-//   inspect(obj, { showHidden: true, depth: null, colors: true });
+// eslint-disable-next-line no-unused-vars
+const ins = obj =>
+  inspect(obj, { showHidden: true, depth: null, colors: true });
 
 async function getServerSidePropsModule(ctx) {
   const { req, query } = ctx;
-  const { pageNumber = 1, limit = 20 } = query;
+  const {
+    pageNumber = 1,
+    limit = DEFAULT_CHANGES_ON_PAGE,
+    sortKey,
+    sortOrder
+  } = query;
+  const props = {
+    pageNumber: Number(pageNumber) || 1,
+    limit: Number(limit) || DEFAULT_CHANGES_ON_PAGE
+  };
+  getValidatedSortKey(sortKey) && (props.sortKey = sortKey);
+  getValidatedSortOrder(sortOrder) && (props.sortOrder = sortOrder);
 
-  // // try {
-  const props = {};
-  const rowsQuantity = await countChanges();
-  // console.log('req.context', req.context);
   if (req.context && req.context.clientInfo) {
-    if (rowsQuantity == 0) {
-      props.projectsAsUser = await getProjectDetails(req.context);
-
-      const issues = await getAllIssues(req.context);
-      props.preparedchanges = [];
-
-      for (let issue of issues.issues) {
-        const issuechangelog = await getAllIssueChangelogs(req.context, issue);
-        props.preparedchanges.push(...issuechangelog);
-      }
-      console.log('preparedchanges>>>>>', props.preparedchanges.length);
-      props.issues = issues;
-      await bulkCreateChanges(props.preparedchanges);
+    const { count: rawChangesCount, rows: rawChanges } = await getChanges({
+      pageNumber: props.pageNumber,
+      limit: props.limit,
+      order: getValidatedOrder(sortKey, sortOrder),
+      clientKey: req.context.clientInfo.clientKey
+    });
+    props.changesTotal = rawChangesCount;
+    if (rawChangesCount == 0) {
+      props.doInit = true;
     } else {
-      console.log('query', query);
-      props.changes = await getChanges({
-        pageNumber: Number(pageNumber) ?? null,
-        limit: Number(limit) ?? null
-      });
-      for (let i of props.changes) {
+      props.doInit = false;
+      const usersToFetch = new Set();
+      for (let i of rawChanges) {
+        usersToFetch.add(i.authorId);
         i.changedAt = i.changedAt.toString();
         i.createdAt = i.createdAt.toString();
         i.updatedAt = i.updatedAt.toString();
       }
+
+      const usersRaw = await getUsers(req.context, {
+        accountIds: Array.from(usersToFetch)
+      });
+
+      for (let i of usersRaw.values) {
+        rawChanges
+          .filter(({ authorId }) => authorId == i.accountId)
+          .forEach(it => {
+            it.editorData = {
+              self: i.self,
+              avatarUrls: i.avatarUrls,
+              displayName: i.displayName,
+              timeZone: i.timeZone
+            };
+          });
+      }
+      props.changes = rawChanges;
     }
-    // console.log('changes', props.changes);
-    console.log('changes len', props.changes.length);
-    props.addonDetails = await getAddonDetails(req.context);
   }
   return {
     props
   };
-  // } catch (e) {
-  // const { req, query } = ctx;
-  // console.log('ctx>>>>>>', ctx, '<<<<<<ctx');
-  // console.log('req>>>>>>', req, '<<<<<<req');
-  // console.log('req.context>>>>>>', req.context, '<<<<<<req.context');
-
-  // const props = { location: 'none' };
-  // // props.projectsAsUser = await getProjectDetails(req.context);
-  // return { props };
-  // }
 }

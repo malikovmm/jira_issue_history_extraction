@@ -16,12 +16,12 @@ import fetchAPI from 'isomorphic-fetch';
 import md5 from 'md5';
 
 import db from '../database';
-import { cleanObject } from '../utils';
+import { cleanObject, sleep } from '../utils';
 
 const fetch = nfbFactory({
   delay: 1 * 1000,
   shouldRetryError: error => {
-    return error.status !== 404 && error.status !== 401;
+    return error.status !== 404 && error.status !== 401 && error.status !== 429;
   },
   fetch: (...args) => {
     return fetchAPI(...args).then(resp => {
@@ -136,9 +136,12 @@ export function getJWTToken(clientValue, req) {
 
   return jwtToken;
 }
-
+// let counter = 0;
 // makes an ajax request to jira on behalf of the addon or the user
 export async function hostRequest(clientValue, options) {
+  // console.log(
+  //   `>>>>>>>>>>>>>>>>>>> REQUEST #${++counter} <<<<<<<<<<<<<<<<<<<<<<<`
+  // );
   const { method = 'get', accountId, raw, qs, search = qs } = options;
   const httpMethod = method === 'del' ? 'delete' : method;
 
@@ -171,44 +174,62 @@ export async function hostRequest(clientValue, options) {
     })
   );
 
-  const response = await fetch(uri.toString(), {
-    method: httpMethod,
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-      authorization: token
-    },
-    body: options.body
-  }).then(async response => {
-    if (raw) {
-      return response;
-    }
-
-    const decodedResponse = await response.text().then(responseText => {
-      try {
-        return JSON.parse(responseText);
-      } catch (e) {
-        try {
-          return oneLine(
-            parse(responseText).querySelector('body').text || responseText
-          );
-        } catch (e) {
-          return responseText;
+  let doRefetch = false;
+  let response;
+  let beforeFetch = async () => {};
+  do {
+    await beforeFetch();
+    response = await fetch(uri.toString(), {
+      method: httpMethod,
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
+        authorization: token
+      },
+      body: options.body
+    })
+      .then(async response => {
+        doRefetch = false;
+        if (raw) {
+          return response;
         }
-      }
-    });
 
-    if (typeof decodedResponse === 'string' && decodedResponse) {
-      return Promise.reject(
-        decodedResponse.length > 1000
-          ? 'Error: response error to long to display'
-          : decodedResponse
-      );
-    } else {
-      return decodedResponse;
-    }
-  });
+        const decodedResponse = await response.text().then(responseText => {
+          try {
+            return JSON.parse(responseText);
+          } catch (e) {
+            try {
+              return oneLine(
+                parse(responseText).querySelector('body').text || responseText
+              );
+            } catch (e) {
+              return responseText;
+            }
+          }
+        });
+
+        if (typeof decodedResponse === 'string' && decodedResponse) {
+          return Promise.reject(
+            decodedResponse.length > 1000
+              ? 'Error: response error to long to display'
+              : decodedResponse
+          );
+        } else {
+          return decodedResponse;
+        }
+      })
+      .catch(err => {
+        if (err.status == 429) {
+          if (err.headers.get('retry-after')) {
+            doRefetch = true;
+            beforeFetch = async () => {
+              await sleep(Number(err.headers.get('retry-after') * 1000) + 1);
+            };
+          }
+        }
+      });
+  } while (doRefetch);
 
   return response;
 }

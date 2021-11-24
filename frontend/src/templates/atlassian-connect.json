@@ -201,13 +201,23 @@
     "jiraWorkflowValidators": [],
     "webhooks": [
       {
-        "event": "jira:issue_created",
-        "url": "/api/hook",
+        "event": "jira:issue_updated",
+        "url": "/api/hooks/issue_updated",
         "excludeBody": false
       },
       {
-        "event": "jira:issue_updated",
-        "url": "/api/hook",
+        "event": "comment_created",
+        "url": "/api/hooks/comment_created",
+        "excludeBody": false
+      },
+      {
+        "event": "comment_updated",
+        "url": "/api/hooks/comment_updated",
+        "excludeBody": false
+      },
+      {
+        "event": "comment_deleted",
+        "url": "/api/hooks/comment_deleted",
         "excludeBody": false
       }
     ]

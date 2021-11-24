@@ -10,7 +10,8 @@ import moment from 'moment';
 import * as util from '../utils';
 import { hostRequest } from './oauth';
 import db from '../database';
-
+import { getCommentAction, getHistoryAction } from '../database/util';
+import { inspect } from 'util';
 // @TODO: This should probably be an env variable
 export const hostRegex = /[^.]*\.(atlassian\.net|jira-dev\.com|atlassian\.com|jira\.com)$/i;
 // @TODO: this should probably be an env variable
@@ -422,7 +423,15 @@ export async function getAddonDetails(context) {
     url: `/rest/atlassian-connect/1/addons/${process.env.PLUGIN_KEY}`
   });
 }
-
+export async function getIssue(context, options = {}) {
+  const { issueKey, fields = ['comment'], expand = ['changelog'] } = options;
+  return await hostRequest(context.clientInfo.value, {
+    accountId: context.accountId,
+    url: `/rest/api/3/issue/${issueKey}?${
+      fields ? '&fields=' + fields.join(',') : ''
+    }${expand ? '&expand=' + expand.join(',') : ''}`
+  });
+}
 export async function searchIssues(context, options = {}) {
   const { maxResult = 100, startAt = 0, fields, expand } = options;
   return await hostRequest(context.clientInfo.value, {
@@ -447,11 +456,8 @@ export async function getIssueChangelog(context, options = {}) {
     url: `/rest/api/3/issue/${issueKey}/changelog?startAt=${startAt}&maxResult=${maxResult}`
   });
 }
-export async function getAllIssues(context) {
-  const issues = await searchIssues(context, {
-    fields: ['comment'],
-    expand: ['changelog']
-  });
+export async function getAllIssues(context, data) {
+  const issues = await searchIssues(context, data);
   if (issues.total > issues.maxResults) {
     const numberOfRequests = Math.ceil(issues.total / issues.maxResults) - 1;
     for (
@@ -459,11 +465,7 @@ export async function getAllIssues(context) {
       i < numberOfRequests;
       i++, startAt += issues.maxResults
     ) {
-      const fetched = await searchIssues(context, {
-        fields: ['comment'],
-        expand: ['changelog'],
-        startAt
-      });
+      const fetched = await searchIssues(context, { ...data, startAt });
       issues.issues.push(...fetched.issues);
     }
   }
@@ -472,6 +474,20 @@ export async function getAllIssues(context) {
 
 export async function getAllIssueChangelogs(context, issue) {
   const preparedChanges = [];
+  for (let comment of issue.fields.comment.comments) {
+    preparedChanges.push({
+      changeId: comment.id,
+      issueKey: issue.key,
+      changedAt: comment.updated,
+      authorId: comment.updateAuthor.accountId,
+      field: 'Comment',
+      fieldType: 'Comment',
+      fieldId: 'Comment',
+      isComment: true,
+      action: getCommentAction(comment),
+      clientKey: context.clientInfo.clientKey
+    });
+  }
   for (let history of issue.changelog.histories) {
     for (let item of history.items) {
       preparedChanges.push({
@@ -481,7 +497,10 @@ export async function getAllIssueChangelogs(context, issue) {
         authorId: history.author.accountId,
         field: item.field,
         fieldType: item.fieldtype,
-        fieldId: item.fieldId
+        fieldId: item.fieldId,
+        isComment: false,
+        action: getHistoryAction(item),
+        clientKey: context.clientInfo.clientKey
       });
     }
   }
@@ -508,7 +527,10 @@ export async function getAllIssueChangelogs(context, issue) {
               authorId: val.author.accountId,
               field: item.field,
               fieldType: item.fieldtype,
-              fieldId: item.fieldId
+              fieldId: item.fieldId,
+              isComment: false,
+              action: getHistoryAction(item),
+              clientKey: context.clientInfo.clientKey
             };
           })
         );
@@ -517,3 +539,16 @@ export async function getAllIssueChangelogs(context, issue) {
   }
   return preparedChanges;
 }
+
+export async function getUsers(context, options = {}) {
+  const { accountIds = [] } = options;
+  if (!accountIds.length) throw `accountIds is empty`;
+  const query = 'accountId=' + accountIds.join('&accountId=');
+  return await hostRequest(context.clientInfo.value, {
+    accountId: context.accountId,
+    url: `/rest/api/3/user/bulk?${query}`
+  });
+}
+
+const ins = obj =>
+  inspect(obj, { showHidden: true, depth: null, colors: true });

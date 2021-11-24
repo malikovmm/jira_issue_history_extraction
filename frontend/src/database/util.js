@@ -1,5 +1,6 @@
 import { Op, col } from 'sequelize';
 import moment from 'moment';
+import { fielsList } from './models/change';
 
 export const whereLike = (fieldName, values) =>
   [].concat(values).map(value => ({
@@ -79,4 +80,38 @@ export const getDateRangeWhere = ({ fieldName, startDate, endDate }) => {
   } else {
     return {};
   }
+};
+
+export const getValidatedOrder = (sortKey, sortOrder) => {
+  if (!fielsList.includes(sortKey)) {
+    return false;
+  }
+  if (!sortOrder.toLowerCase() == 'asc' || !sortOrder.toLowerCase() == 'desc') {
+    return false;
+  }
+  return [[sortKey.toUpperCase(), sortOrder.toUpperCase()]];
+};
+export const getValidatedSortKey = sortKey => {
+  if (!sortKey || !fielsList.includes(sortKey)) {
+    return undefined;
+  }
+  return sortKey;
+};
+export const getValidatedSortOrder = sortOrder => {
+  if (
+    !sortOrder ||
+    !sortOrder.toLowerCase() == 'asc' ||
+    !sortOrder.toLowerCase() == 'desc'
+  ) {
+    return undefined;
+  }
+  return sortOrder;
+};
+
+export const getCommentAction = comment =>
+  comment.created == comment.updated ? 'create' : 'update';
+export const getHistoryAction = item => {
+  if (!item.fromString && !!item.toString) return 'create';
+  if (!!item.fromString && !!item.toString) return 'update';
+  if (!!item.fromString && !item.toString) return 'delete';
 };

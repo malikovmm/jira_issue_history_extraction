@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import cx from 'classnames';
 import Head from 'next/head';
 import { useIsomorphicLayoutEffect, useSize } from 'react-use';
@@ -14,6 +14,19 @@ import { IS_DEV, IS_IFRAME } from '../constants';
 import useAPURLSync from '../hooks/useAPURLSync';
 import LicenseError from '../components/license-error';
 
+import { createGlobalStyle } from 'styled-components';
+
+const GlobalStyle = createGlobalStyle`
+  body {
+    color: #172b4d;
+    font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu,
+      Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+    box-sizing:border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+`;
 function App({ Component, pageProps }) {
   if (pageProps.error) {
     return (
@@ -45,7 +58,10 @@ function MyApp({ Component, pageProps }) {
       doResize();
     }
   }, [resize, size.width, size.height]);
-
+  useEffect(() => {
+    window.AP.resize('100%', '100%');
+    window.AP.sizeToParent();
+  }, []);
   useIsomorphicLayoutEffect(() => {
     if (
       sizeToParent &&
@@ -110,6 +126,7 @@ function MyApp({ Component, pageProps }) {
                   content="width=device-width, initial-scale=1"
                 />
               </Head>
+              <GlobalStyle />
               {error && (
                 <SectionMessage appearance="error" title="Error Starting App">
                   App Must be Loaded from within JIRA

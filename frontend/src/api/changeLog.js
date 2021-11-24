@@ -1,5 +1,4 @@
 import db from '../database';
-import { inspect } from 'util';
 
 export const countChanges = async () => {
   const rows = await db.Change.findAll();
@@ -17,11 +16,14 @@ export const getChanges = async data => {
     authorId,
     field,
     fieldType,
-    fieldId
+    fieldId,
+    order,
+    clientKey
   } = data;
-  const offset = pageNumber ? (pageNumber - 1) * limit : 0;
-  const where = {};
+  if (!clientKey) throw 'clientKey is required';
 
+  const offset = pageNumber ? (pageNumber - 1) * limit : 0;
+  const where = { clientKey };
   id && (where.id = id);
   changeId && (where.changeId = changeId);
   issueKey && (where.issueKey = issueKey);
@@ -31,13 +33,25 @@ export const getChanges = async data => {
   fieldType && (where.fieldType = fieldType);
   fieldId && (where.fieldId = fieldId);
 
-  const rows = await db.Change.findAll({ offset, limit, where, raw: true });
+  const query = {
+    offset,
+    limit,
+    where,
+    raw: true
+  };
 
-  return rows;
+  order && (query.order = order);
+  const result = await db.Change.findAndCountAll(query);
+
+  return result;
 };
 
 export const bulkCreateChanges = async changes => {
   const res = await db.Change.bulkCreate(changes);
+  return res;
+};
 
+export const createChange = async change => {
+  const res = await db.Change.create(change);
   return res;
 };

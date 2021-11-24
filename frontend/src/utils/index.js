@@ -142,3 +142,9 @@ export function longestCommonStartingPrefix(arr1) {
 
 export const setAsString = value =>
   typeof value !== 'string' ? JSON.stringify(value) : value;
+
+export function sleep(ms) {
+  return new Promise(resolve => {
+    setTimeout(resolve, ms);
+  });
+}
