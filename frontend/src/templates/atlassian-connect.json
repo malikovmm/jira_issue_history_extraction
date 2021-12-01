@@ -219,6 +219,26 @@
         "event": "comment_deleted",
         "url": "/api/hooks/comment_deleted",
         "excludeBody": false
+      },
+      {
+        "event": "worklog_created",
+        "url": "/api/hooks/worklog_created",
+        "excludeBody": false
+      },
+      {
+        "event": "worklog_updated",
+        "url": "/api/hooks/worklog_updated",
+        "excludeBody": false
+      },
+      {
+        "event": "worklog_deleted",
+        "url": "/api/hooks/worklog_deleted",
+        "excludeBody": false
+      },
+      {
+        "event": "option_timetracking_changed",
+        "url": "/api/hooks/option_timetracking_changed",
+        "excludeBody": false
       }
     ]
   }

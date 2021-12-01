@@ -1,17 +1,16 @@
 import { useState, useMemo, useEffect } from 'react';
 import styled from 'styled-components';
-import { getUsers } from '../api/atlassian';
+import { getAllIssues, getUsers } from '../api/atlassian';
 import { withServerSideAuth } from '../middleware/authenticate';
 import { fetch } from '../ap';
 import Select from '@atlaskit/select';
 import Pagination from './../components/pagination';
-import { getChanges } from './../api/changeLog';
+import { countClientChanges, getChanges } from './../api/changeLog';
 import { useRouter } from 'next/router';
 import { inspect } from 'util';
 import { getToken } from '../ap/request';
 import { DynamicTableStateless } from '@atlaskit/dynamic-table';
 import Avatar from '@atlaskit/avatar';
-
 import Lozenge from '@atlaskit/lozenge';
 import { DEFAULT_CHANGES_ON_PAGE } from '../constants';
 import {
@@ -19,7 +18,54 @@ import {
   getValidatedSortKey,
   getValidatedSortOrder
 } from '../database/util';
-
+import FilterBar from '../components/FilterBar';
+import useNextLoader from '../hooks/useNextLoader';
+import ViewModeButton from '../components/viewModeButton';
+import TransitionsTable from '../components/TransitionsTable';
+import VM2 from '../components/VM2';
+const tableHead = {
+  cells: [
+    {
+      key: 'id',
+      content: 'Id',
+      isSortable: true
+    },
+    {
+      key: 'editor',
+      content: 'Editor'
+    },
+    {
+      key: 'issueKey',
+      content: 'Issue',
+      isSortable: true
+    },
+    {
+      key: 'field',
+      content: 'Field',
+      isSortable: true
+    },
+    {
+      key: 'changedAt',
+      content: 'Changed at',
+      isSortable: true
+    },
+    {
+      key: 'action',
+      content: 'Action',
+      isSortable: true
+    }
+  ]
+};
+const limitOptions = [
+  { label: '10', value: 10 },
+  { label: '15', value: 15 },
+  { label: '20', value: 20 },
+  { label: '25', value: 25 },
+  { label: '30', value: 30 },
+  { label: '35', value: 35 },
+  { label: '40', value: 40 }
+];
+// import { getAllUsers } from './api/users';
 const DataContainer = styled.div`
   width: 80%;
   margin: 0 auto;
@@ -119,16 +165,39 @@ const createRows = (doInit, changes, stateChanges) => {
     return stateChanges.map(mapCb);
   }
 };
+const ModeBar = styled.div`
+  margin-top: 15px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+`;
 export default function ModulePage(props) {
+  // console.log('props>>>', props);
   const [sortKey, setSortKey] = useState(props.sortKey || 'id');
   const [sortOrder, setSortOrder] = useState(props.sortOrder || 'ASC');
   const [limit, setLimit] = useState(props.limit);
   const router = useRouter();
-  const [routerLoading, setRouterLoading] = useState(false);
+  // const [routerLoading, setRouterLoading] = useState(false);
+  const routerLoading = useNextLoader();
   const [fetching, setFetching] = useState(false);
   const [initChanges, setInitChanges] = useState([]);
   const [changescount, setChangescount] = useState(1);
-  const pushQuery = (page, limit) => {
+  const [viewMode, setViewMode] = useState(1); // 1 - full | 2 - by values
+
+  /**
+   *
+   * @param {*} page
+   * @param {*} limit
+   * @param {*} filterData: [{filter:value},{...},...]
+   * {
+        issueKey: issueKeyFilter,
+        user: userFilter,
+        field: fieldFilter,
+        dateFrom: dateFromFilter,
+        dateTo: dateToFilter
+      }
+   */
+  const pushQuery = (page, limit, filterData = null) => {
     getToken().then(jwt => {
       if (!page) router.query['pageNumber'] = ~~router.query['pageNumber'] || 1;
       else router.query['pageNumber'] = page;
@@ -139,6 +208,23 @@ export default function ModulePage(props) {
       router.query['jwt'] = jwt;
       router.query['sortKey'] = sortKey;
       router.query['sortOrder'] = sortOrder;
+      if (filterData) {
+        if (filterData.issueKey != undefined) {
+          router.query['issueKey'] = filterData.issueKey;
+        }
+        if (filterData.user != undefined) {
+          router.query['user'] = filterData.user;
+        }
+        if (filterData.field != undefined) {
+          router.query['field'] = filterData.field;
+        }
+        if (filterData.dateFrom != undefined) {
+          router.query['dateFrom'] = filterData.dateFrom;
+        }
+        if (filterData.dateTo != undefined) {
+          router.query['dateTo'] = filterData.dateTo;
+        }
+      }
       router.push({ pathname: router.pathname, query: router.query });
     });
   };
@@ -157,26 +243,9 @@ export default function ModulePage(props) {
   useEffect(() => {
     setChangescount(props.changesTotal);
   }, [props.changesTotal]);
-  useEffect(() => {
-    const handleStart = () => {
-      setRouterLoading(true);
-    };
-    const handleComplete = () => {
-      setRouterLoading(false);
-    };
 
-    router.events.on('routeChangeStart', handleStart);
-    router.events.on('routeChangeComplete', handleComplete);
-    router.events.on('routeChangeError', handleComplete);
-
-    return () => {
-      router.events.off('routeChangeStart', handleStart);
-      router.events.off('routeChangeComplete', handleComplete);
-      router.events.off('routeChangeError', handleComplete);
-    };
-  });
   useEffect(() => {
-    if (props.doInit && (!props.changes || !props.changes.length)) {
+    if (props.doInit) {
       setFetching(true);
       fetch('/api/initChanges', {
         method: 'GET'
@@ -187,103 +256,85 @@ export default function ModulePage(props) {
         })
         .catch(error => {
           setInitChanges([]);
-          console.log('Failed to fetch', error);
+          console.log('Failed to fetch initChanges', error);
         })
         .finally(() => {
           setFetching(false);
         });
     }
   }, [props.doInit, props.changes]);
-  // eslint-disable-next-line no-unused-vars
-  const otherpropstemp = JSON.parse(JSON.stringify(props));
-  otherpropstemp.projectsAsUser = null;
-  otherpropstemp.location = null;
-  otherpropstemp.addonDetails = null;
 
   const rows = createRows(props.doInit, props.changes, initChanges);
 
   return (
     <>
       <DataContainer>
-        <TableContainer>
-          <DynamicTableStateless
-            caption={
-              <span>
-                {props.doInit && fetching
-                  ? 'The first launch may take a few minutes, please wait...'
-                  : 'Change list'}
-              </span>
-            }
-            sortKey={sortKey}
-            isLoading={routerLoading || fetching}
-            loadingSpinnerSize={'small'}
-            head={{
-              cells: [
-                {
-                  key: 'id',
-                  content: 'Id',
-                  isSortable: true
-                },
-                {
-                  key: 'editor',
-                  content: 'Editor'
-                },
-                {
-                  key: 'issueKey',
-                  content: 'Issue',
-                  isSortable: true
-                },
-                {
-                  key: 'field',
-                  content: 'Field',
-                  isSortable: true
-                },
-                {
-                  key: 'changedAt',
-                  content: 'Changed at',
-                  isSortable: true
-                },
-                {
-                  key: 'action',
-                  content: 'Action',
-                  isSortable: true
+        <ModeBar>
+          <span>View mode:</span>
+          <ViewModeButton
+            active={viewMode === 1}
+            onClick={() => setViewMode(1)}
+          >
+            Full
+          </ViewModeButton>
+          <ViewModeButton
+            active={viewMode === 2}
+            onClick={() => setViewMode(2)}
+          >
+            By values
+          </ViewModeButton>
+        </ModeBar>
+        {viewMode == 1 && (
+          <>
+            <FilterBar pushQuery={pushQuery} />
+            <TableContainer>
+              <DynamicTableStateless
+                caption={
+                  <span>
+                    {props.doInit && fetching
+                      ? 'The first launch may take a few minutes, please wait...'
+                      : 'Change list'}
+                  </span>
                 }
-              ]
-            }}
-            rows={rows}
-            onSort={a => {
-              setSortKey(a.key);
-              if (sortOrder.toLowerCase() == 'asc') {
-                setSortOrder('DESC');
-              }
-              if (sortOrder.toLowerCase() == 'desc') {
-                setSortOrder('ASC');
-              }
-            }}
-          />
-        </TableContainer>
-        <Pagination
-          pageNumber={props.pageNumber}
-          pushQuery={pushQuery}
-          totalPages={totalPages}
-          limit={limit}
-        />
-        <Select
-          options={[
-            { label: '10', value: 10 },
-            { label: '15', value: 15 },
-            { label: '20', value: 20 },
-            { label: '25', value: 25 },
-            { label: '30', value: 30 },
-            { label: '35', value: 35 },
-            { label: '40', value: 40 }
-          ]}
-          value={limit}
-          onChange={a => {
-            setLimit(a.value);
-          }}
-          placeholder="Choose a limit"
-        />
+                sortKey={sortKey}
+                isLoading={routerLoading || fetching}
+                loadingSpinnerSize={'small'}
+                head={tableHead}
+                rows={rows}
+                onSort={a => {
+                  setSortKey(a.key);
+                  if (sortOrder.toLowerCase() == 'asc') {
+                    setSortOrder('DESC');
+                  }
+                  if (sortOrder.toLowerCase() == 'desc') {
+                    setSortOrder('ASC');
+                  }
+                }}
+              />
+            </TableContainer>
+            <Pagination
+              pageNumber={props.pageNumber}
+              pushQuery={pushQuery}
+              totalPages={totalPages}
+              limit={limit}
+            />
+            <Select
+              options={limitOptions}
+              value={limit}
+              onChange={a => {
+                setLimit(a.value);
+              }}
+              placeholder="Choose a limit"
+            />
+          </>
+        )}
+        {viewMode == 2 && (
+          <>
+            <div>
+              <VM2 />
+            </div>
+          </>
+        )}
       </DataContainer>
     </>
   );
@@ -313,59 +364,96 @@ const ins = obj =>
 
 async function getServerSidePropsModule(ctx) {
   const { req, query } = ctx;
+  // {
+  //   issueKey: issueKeyFilter,
+  //   user: userFilter,
+  //   field: fieldFilter,
+  //   dateFrom: dateFromFilter,
+  //   dateTo: dateToFilter
+  // }
   const {
     pageNumber = 1,
     limit = DEFAULT_CHANGES_ON_PAGE,
     sortKey,
-    sortOrder
+    sortOrder,
+    // filters
+    issueKey,
+    user,
+    field,
+    dateFrom,
+    dateTo
   } = query;
+  // console.log('QUERY', query);
+
   const props = {
     pageNumber: Number(pageNumber) || 1,
     limit: Number(limit) || DEFAULT_CHANGES_ON_PAGE
   };
-  getValidatedSortKey(sortKey) && (props.sortKey = sortKey);
-  getValidatedSortOrder(sortOrder) && (props.sortOrder = sortOrder);
+  try {
+    getValidatedSortKey(sortKey) && (props.sortKey = sortKey);
+    getValidatedSortOrder(sortOrder) && (props.sortOrder = sortOrder);
 
-  if (req.context && req.context.clientInfo) {
-    const { count: rawChangesCount, rows: rawChanges } = await getChanges({
-      pageNumber: props.pageNumber,
-      limit: props.limit,
-      order: getValidatedOrder(sortKey, sortOrder),
-      clientKey: req.context.clientInfo.clientKey
-    });
-    props.changesTotal = rawChangesCount;
-    if (rawChangesCount == 0) {
-      props.doInit = true;
-    } else {
-      props.doInit = false;
-      const usersToFetch = new Set();
-      for (let i of rawChanges) {
-        usersToFetch.add(i.authorId);
-        i.changedAt = i.changedAt.toString();
-        i.createdAt = i.createdAt.toString();
-        i.updatedAt = i.updatedAt.toString();
-      }
+    if (req.context && req.context.clientInfo) {
+      const { count: rawChangesCount, rows: rawChanges } = await getChanges({
+        pageNumber: props.pageNumber,
+        limit: props.limit,
+        order: getValidatedOrder(sortKey, sortOrder),
+        clientKey: req.context.clientInfo.clientKey,
 
-      const usersRaw = await getUsers(req.context, {
-        accountIds: Array.from(usersToFetch)
+        issueKey,
+        authorId: user,
+        field,
+        dateFrom: dateFrom,
+        dateTo: dateTo
       });
+      props.llIssues = await getAllIssues(req.context, {
+        fields: ['project', 'comment'],
+        expand: ['changelog', 'transitions']
+      });
+      props.changesTotal = rawChangesCount;
+      // console.log('rawChangesCount', rawChangesCount);
+      if (req.context.clientInfo.clientKey && rawChangesCount == 0) {
+        const clientChanges = await countClientChanges({
+          clientKey: req.context.clientInfo.clientKey
+        });
+        if (clientChanges == 0) props.doInit = true;
+      } else {
+        props.doInit = false;
+        const usersToFetch = new Set();
+        for (let i of rawChanges) {
+          usersToFetch.add(i.authorId);
+          i.changedAt = i.changedAt.toString();
+          i.createdAt = i.createdAt.toString();
+          i.updatedAt = i.updatedAt.toString();
+        }
 
-      for (let i of usersRaw.values) {
-        rawChanges
-          .filter(({ authorId }) => authorId == i.accountId)
-          .forEach(it => {
-            it.editorData = {
-              self: i.self,
-              avatarUrls: i.avatarUrls,
-              displayName: i.displayName,
-              timeZone: i.timeZone
-            };
-          });
+        const usersRaw = await getUsers(req.context, {
+          accountIds: Array.from(usersToFetch)
+        });
+
+        for (let i of usersRaw.values) {
+          rawChanges
+            .filter(({ authorId }) => authorId == i.accountId)
+            .forEach(it => {
+              it.editorData = {
+                self: i.self,
+                avatarUrls: i.avatarUrls,
+                displayName: i.displayName,
+                timeZone: i.timeZone
+              };
+            });
+        }
+        props.changes = rawChanges;
       }
-      props.changes = rawChanges;
     }
+    console.log('returned', props);
+    return {
+      props
+    };
+  } catch (error) {
+    console.log('MODULE ERROR>>>>>>>>', error);
+    return {
+      props
+    };
   }
-  return {
-    props
-  };
 }

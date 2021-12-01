@@ -3,14 +3,27 @@ export const fielsList = [
   'id',
   'changeId',
   'issueKey',
+  'projectId',
   'changedAt',
   'authorId',
   'field',
   'fieldType',
   'fieldId',
   'isComment',
-  'action'
+  'action',
+  'fromVal',
+  'toVal'
 ];
+/**
+ * field ids, where allow to collect data (fromstring, toString)
+ */
+export const collectAllowedIds = [
+  'timespent',
+  'status',
+  'summary',
+  'timeestimate'
+];
+
 export default function (sequelize, DataTypes) {
   var Change = sequelize.define(
     'Change',
@@ -27,6 +40,10 @@ export default function (sequelize, DataTypes) {
       },
       issueKey: {
         type: DataTypes.STRING,
+        allowNull: false
+      },
+      projectId: {
+        type: DataTypes.INTEGER,
         allowNull: false
       },
       changedAt: {
@@ -47,7 +64,7 @@ export default function (sequelize, DataTypes) {
       },
       fieldId: {
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: true
       },
       isComment: {
         type: DataTypes.BOOLEAN,
@@ -61,6 +78,14 @@ export default function (sequelize, DataTypes) {
       clientKey: {
         type: DataTypes.STRING,
         allowNull: false
+      },
+      fromVal: {
+        type: DataTypes.STRING,
+        allowNull: true
+      },
+      toVal: {
+        type: DataTypes.STRING,
+        allowNull: true
       }
     },
     {

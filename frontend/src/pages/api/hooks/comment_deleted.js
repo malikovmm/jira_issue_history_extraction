@@ -1,5 +1,6 @@
 import { authenticate } from '../../../api/atlassian';
 import { createChange } from '../../../api/changeLog';
+import { collectAllowedIds } from '../../../database/models/change';
 
 const commentDeletedHandler = async req => {
   if (!req) throw 'wrong request object';
@@ -12,6 +13,7 @@ const commentDeletedHandler = async req => {
   return await createChange({
     changeId: comment.id,
     issueKey: issueKey,
+    projectId: issue.fields.project.id,
     changedAt: Date.now(),
     authorId: comment.updateAuthor.accountId,
     field: 'Comment',

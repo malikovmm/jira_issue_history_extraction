@@ -9,9 +9,10 @@ import moment from 'moment';
 
 import * as util from '../utils';
 import { hostRequest } from './oauth';
-import db from '../database';
+import db, { ins } from '../database';
 import { getCommentAction, getHistoryAction } from '../database/util';
 import { inspect } from 'util';
+import { collectAllowedIds } from '../database/models/change';
 // @TODO: This should probably be an env variable
 export const hostRegex = /[^.]*\.(atlassian\.net|jira-dev\.com|atlassian\.com|jira\.com)$/i;
 // @TODO: this should probably be an env variable
@@ -433,10 +434,10 @@ export async function getIssue(context, options = {}) {
   });
 }
 export async function searchIssues(context, options = {}) {
-  const { maxResult = 100, startAt = 0, fields, expand } = options;
+  const { maxResults = 100, startAt = 0, fields, expand } = options;
   return await hostRequest(context.clientInfo.value, {
     accountId: context.accountId,
-    url: `/rest/api/3/search?maxResults=${maxResult}&startAt=${startAt}${
+    url: `/rest/api/3/search?maxResults=${maxResults}&startAt=${startAt}${
       fields ? '&fields=' + fields.join(',') : ''
     }${expand ? '&expand=' + expand.join(',') : ''}`
   });
@@ -449,11 +450,11 @@ export async function getProjectDetails(context) {
 }
 
 export async function getIssueChangelog(context, options = {}) {
-  const { maxResult = 100, startAt = 0, issueKey } = options;
+  const { maxResults = 100, startAt = 0, issueKey } = options;
   if (!issueKey) throw 'issueKey is required';
   return await hostRequest(context.clientInfo.value, {
     accountId: context.accountId,
-    url: `/rest/api/3/issue/${issueKey}/changelog?startAt=${startAt}&maxResult=${maxResult}`
+    url: `/rest/api/3/issue/${issueKey}/changelog?startAt=${startAt}&maxResults=${maxResults}`
   });
 }
 export async function getAllIssues(context, data) {
@@ -472,27 +473,68 @@ export async function getAllIssues(context, data) {
   return issues;
 }
 
+function handleToVal(item) {
+  switch (item.field) {
+    case 'status': {
+      return item.to;
+    }
+    case 'timeestimate': {
+      return item.to;
+    }
+    case 'timespent': {
+      return item.to;
+    }
+    default: {
+      return item.toString;
+    }
+  }
+}
+
+function handleFromVal(item) {
+  switch (item.field) {
+    case 'status': {
+      return item.from;
+    }
+    case 'timeestimate': {
+      return item.from;
+    }
+    case 'timespent': {
+      return item.from;
+    }
+    default: {
+      return item.fromString;
+    }
+  }
+}
+
 export async function getAllIssueChangelogs(context, issue) {
+  const total = issue.changelog.total;
+  const maxRes = issue.changelog.maxResults;
   const preparedChanges = [];
   for (let comment of issue.fields.comment.comments) {
     preparedChanges.push({
       changeId: comment.id,
       issueKey: issue.key,
+      projectId: issue.fields.project.id,
       changedAt: comment.updated,
       authorId: comment.updateAuthor.accountId,
-      field: 'Comment',
-      fieldType: 'Comment',
-      fieldId: 'Comment',
+      field: 'comment',
+      fieldType: 'comment',
+      fieldId: 'comment',
       isComment: true,
       action: getCommentAction(comment),
       clientKey: context.clientInfo.clientKey
     });
   }
   for (let history of issue.changelog.histories) {
+    // console.log('history', history, '<history');
     for (let item of history.items) {
+      const collectAllowed = collectAllowedIds.includes(item.fieldId);
+      // console.log('item >>>>>>>>', item, { collectAllowed }, '<<<');
       preparedChanges.push({
         changeId: history.id,
         issueKey: issue.key,
+        projectId: issue.fields.project.id,
         changedAt: history.created,
         authorId: history.author.accountId,
         field: item.field,
@@ -500,29 +542,30 @@ export async function getAllIssueChangelogs(context, issue) {
         fieldId: item.fieldId,
         isComment: false,
         action: getHistoryAction(item),
-        clientKey: context.clientInfo.clientKey
+        clientKey: context.clientInfo.clientKey,
+        fromVal: collectAllowed ? handleToVal(item) : null,
+        toVal: collectAllowed ? handleFromVal(item) : null
       });
     }
   }
-  if (issue.changelog.total > issue.changelog.maxResults) {
-    const numberOfRequests =
-      Math.ceil(issue.changelog.total / issue.changelog.maxResults) - 1;
-    for (
-      let i = 0, startAt = issue.changelog.maxResults;
-      i < numberOfRequests;
-      i++, startAt += issue.changelog.maxResults
-    ) {
+  if (total > maxRes) {
+    const numberOfRequests = Math.ceil(total / maxRes) - 1;
+    const offset = total % maxRes;
+    for (let i = 0; i < numberOfRequests; ++i) {
       const fetched = await getIssueChangelog(context, {
         issueKey: issue.key,
-        startAt,
-        maxResult: issue.changelog.maxResults
+        startAt: offset ? (i ? maxRes * (i - 1) + offset : 0) : i * maxRes,
+        maxResults: offset ? (i ? maxRes : offset) : maxRes
       });
+
       for (let val of fetched.values) {
         preparedChanges.push(
           ...val.items.map(item => {
+            const collectAllowed = collectAllowedIds.includes(item.fieldId);
             return {
               changeId: val.id,
               issueKey: issue.key,
+              projectId: issue.fields.project.id,
               changedAt: val.created,
               authorId: val.author.accountId,
               field: item.field,
@@ -530,7 +573,9 @@ export async function getAllIssueChangelogs(context, issue) {
               fieldId: item.fieldId,
               isComment: false,
               action: getHistoryAction(item),
-              clientKey: context.clientInfo.clientKey
+              clientKey: context.clientInfo.clientKey,
+              fromVal: collectAllowed ? handleToVal(item) : null,
+              toVal: collectAllowed ? handleFromVal(item) : null
             };
           })
         );
@@ -550,5 +595,18 @@ export async function getUsers(context, options = {}) {
   });
 }
 
-const ins = obj =>
-  inspect(obj, { showHidden: true, depth: null, colors: true });
+export async function getAllStatuses(context) {
+  return await hostRequest(context.clientInfo.value, {
+    accountId: context.accountId,
+    url: `/rest/api/3/status`
+  });
+}
+export async function searchProjects(context, options = {}) {
+  const { maxResults = 100, startAt = 0, id, expand } = options;
+  return await hostRequest(context.clientInfo.value, {
+    accountId: context.accountId,
+    url: `/rest/api/3/project/search?maxResults=${maxResults}&startAt=${startAt}${
+      id.length > 0 ? '&id=' + id.join('&id=') : ''
+    }`
+  });
+}

@@ -1,5 +1,6 @@
 import { authenticate } from '../../../api/atlassian';
 import { createChange } from '../../../api/changeLog';
+import { collectAllowedIds } from '../../../database/models/change';
 
 const commentCreatedHandler = async req => {
   if (!req) throw 'wrong request object';
@@ -12,6 +13,7 @@ const commentCreatedHandler = async req => {
   return await createChange({
     changeId: comment.id,
     issueKey: issueKey,
+    projectId: issue.fields.project.id,
     changedAt: comment.created,
     authorId: comment.author.accountId,
     field: 'Comment',

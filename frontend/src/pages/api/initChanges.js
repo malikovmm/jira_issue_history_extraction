@@ -9,18 +9,39 @@ import {
 import { DEFAULT_CHANGES_ON_PAGE } from '../../constants';
 
 const doInit = async req => {
-  if (!req) throw 'wrong request object';
-
-  const allIssues = await getAllIssues(req.context, {
-    fields: ['comment'],
-    expand: ['changelog']
-  });
-  const preparedchanges = [];
-  for (let issue of allIssues.issues) {
-    const issuechangelog = await getAllIssueChangelogs(req.context, issue);
-    preparedchanges.push(...issuechangelog);
+  try {
+    if (!req) throw 'wrong request object';
+    let allIssues;
+    try {
+      allIssues = await getAllIssues(req.context, {
+        fields: ['comment', 'project'],
+        expand: ['changelog']
+      });
+    } catch (ie) {
+      console.log(ie);
+      console.log('getAllIssues error', ie);
+    }
+    const preparedchanges = [];
+    try {
+      for (let issue of allIssues.issues) {
+        const issuechangelog = await getAllIssueChangelogs(req.context, issue);
+        preparedchanges.push(...issuechangelog);
+      }
+    } catch (aice) {
+      console.log('getAllIssueChangelogs error', aice);
+    }
+    try {
+      await bulkCreateChanges(preparedchanges);
+    } catch (be) {
+      console.log('bulkCreateChanges error', be);
+    }
+  } catch (e) {
+    // console.log(e);
+    console.log(e.message);
+    console.log(e.name);
+    console.log('^^^^^^^^^^^^^^^^^^^^^^^^^^');
+    console.log('INIT ERROR');
   }
-  await bulkCreateChanges(preparedchanges);
 };
 
 export default async function initHistory(req, res) {

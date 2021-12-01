@@ -1,7 +1,7 @@
 import { Op, col } from 'sequelize';
 import moment from 'moment';
 import { fielsList } from './models/change';
-
+import { inspect } from 'util';
 export const whereLike = (fieldName, values) =>
   [].concat(values).map(value => ({
     [fieldName]: {
@@ -111,7 +111,25 @@ export const getValidatedSortOrder = sortOrder => {
 export const getCommentAction = comment =>
   comment.created == comment.updated ? 'create' : 'update';
 export const getHistoryAction = item => {
+  if (item.field == 'status') console.log('getHistoryAction status', item);
   if (!item.fromString && !!item.toString) return 'create';
   if (!!item.fromString && !!item.toString) return 'update';
   if (!!item.fromString && !item.toString) return 'delete';
 };
+/**
+ * YYYY-MM-DDTHH:mm 0000 -> YYYY-MM-DDTHH:mm:00 0000
+ * @param {*} date
+ */
+export const addSecondsToTime = date => {
+  if (!date) return;
+  const splited = date.split(' ');
+  return [splited[0] + ':00', splited[1]].join(' ');
+};
+
+export const ins = obj =>
+  inspect(obj, {
+    showHidden: true,
+    depth: null,
+    colors: true,
+    maxArrayLength: null
+  });

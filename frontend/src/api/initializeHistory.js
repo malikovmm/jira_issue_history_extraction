@@ -1,7 +1,7 @@
 import { getAllIssues, getAllIssueChangelogs } from '../api/atlassian';
 export default async function initializeHistory(req) {
   const allIssues = await getAllIssues(req.context, {
-    fields: ['comment'],
+    fields: ['comment', 'project'],
     expand: ['changelog']
   });
   const preparedchanges = [];

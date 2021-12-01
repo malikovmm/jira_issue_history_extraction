@@ -220,6 +220,7 @@ export async function hostRequest(clientValue, options) {
         }
       })
       .catch(err => {
+        console.log('hostRequest fetch error', err);
         if (err.status == 429) {
           if (err.headers.get('retry-after')) {
             doRefetch = true;
