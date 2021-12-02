@@ -1,5 +1,5 @@
 /* eslint-disable import/no-anonymous-default-export */
-export const fielsList = [
+export const fieldsList = [
   'id',
   'changeId',
   'issueKey',
@@ -15,7 +15,7 @@ export const fielsList = [
   'toVal'
 ];
 /**
- * field ids, where allow to collect data (fromstring, toString)
+ * field ids, where allow to collect data (fromString, toString, to, from)
  */
 export const collectAllowedIds = [
   'timespent',

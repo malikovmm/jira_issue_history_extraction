@@ -1,15 +1,13 @@
-import { isStyledComponent } from 'styled-components';
 import {
   authenticate,
   getAllStatuses,
   searchProjects
 } from '../../api/atlassian';
 import { getByField } from '../../api/changeLog';
-import { collectAllowedIds } from '../../database/models/change';
 
 const getTransitions = async req => {
   if (!req) throw 'wrong request object';
-  console.log('getTransitions req.query', req.query, req.context);
+  // console.log('getTransitions req.query', req.query, req.context);
   const statuses = await getAllStatuses(req.context);
   if (req.query.names == 'true') {
     const projects = await searchProjects(req.context, {
@@ -32,7 +30,7 @@ const getTransitions = async req => {
   };
 
   const transitions = await getByField(queryOptions);
-  console.log('transitions', transitions);
+  // console.log('transitions', transitions);
   const temp2 = [];
   const statusObj = statuses.find(it => it.id == req.query.statusId);
   for (let i of transitions.rows) {
@@ -45,7 +43,7 @@ const getTransitions = async req => {
     };
     const last = temp2.find(it => it.issueKey == i.issueKey);
     if (last) {
-      console.log('last, i', last, i);
+      // console.log('last, i', last, i);
       if (last.changedAt.toString() != i.changedAt.toString()) {
         last.numberOfTransitions += 1;
       }

@@ -16,9 +16,9 @@ const commentDeletedHandler = async req => {
     projectId: issue.fields.project.id,
     changedAt: Date.now(),
     authorId: comment.updateAuthor.accountId,
-    field: 'Comment',
-    fieldType: 'Comment',
-    fieldId: 'Comment',
+    field: 'comment',
+    fieldType: 'comment',
+    fieldId: 'comment',
     isComment: true,
     action: 'delete',
     clientKey: req.context.clientInfo.clientKey

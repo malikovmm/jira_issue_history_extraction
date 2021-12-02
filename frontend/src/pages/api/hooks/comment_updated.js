@@ -10,18 +10,21 @@ const commentUpdatedHandler = async req => {
   const comment = req.body.comment;
   const { key: issueKey } = req.body.issue;
 
+  const collectAllowed = collectAllowedIds.includes('comment');
   return await createChange({
     changeId: comment.id,
     issueKey: issueKey,
     projectId: issue.fields.project.id,
     changedAt: comment.updated,
     authorId: comment.updateAuthor.accountId,
-    field: 'Comment',
-    fieldType: 'Comment',
-    fieldId: 'Comment',
+    field: 'comment',
+    fieldType: 'comment',
+    fieldId: 'comment',
     isComment: true,
     action: 'update',
-    clientKey: req.context.clientInfo.clientKey
+    clientKey: req.context.clientInfo.clientKey,
+    toVal: collectAllowed ? item.toString : null,
+    fromVal: collectAllowed ? item.fromString : null
   });
 };
 

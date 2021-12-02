@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@atlaskit/avatar": "^20.5.2",
+    "@atlaskit/breadcrumbs": "^11.4.1",
     "@atlaskit/button": "^16.1.2",
     "@atlaskit/datetime-picker": "^11.1.2",
     "@atlaskit/dynamic-table": "^14.4.3",

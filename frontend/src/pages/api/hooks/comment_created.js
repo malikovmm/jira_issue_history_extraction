@@ -1,6 +1,6 @@
 import { authenticate } from '../../../api/atlassian';
 import { createChange } from '../../../api/changeLog';
-import { collectAllowedIds } from '../../../database/models/change';
+import { ins } from '../../../utils';
 
 const commentCreatedHandler = async req => {
   if (!req) throw 'wrong request object';
@@ -9,16 +9,16 @@ const commentCreatedHandler = async req => {
   if (!req.body.issue) throw 'body must have issue';
   const comment = req.body.comment;
   const { key: issueKey } = req.body.issue;
-
+  console.log('req.body', ins(req.body));
   return await createChange({
     changeId: comment.id,
     issueKey: issueKey,
-    projectId: issue.fields.project.id,
+    projectId: req.body.issue.fields.project.id,
     changedAt: comment.created,
     authorId: comment.author.accountId,
-    field: 'Comment',
-    fieldType: 'Comment',
-    fieldId: 'Comment',
+    field: 'comment',
+    fieldType: 'comment',
+    fieldId: 'comment',
     isComment: true,
     action: 'create',
     clientKey: req.context.clientInfo.clientKey

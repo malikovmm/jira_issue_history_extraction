@@ -1,6 +1,4 @@
 import { authenticate } from '../../api/atlassian';
-import { bulkCreateChanges } from '../../api/changeLog';
-import { getHistoryAction } from '../../database/util';
 import { getUsers } from '../../api/atlassian';
 import { getUserIds } from '../../api/changeLog';
 

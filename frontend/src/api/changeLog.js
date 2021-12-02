@@ -68,12 +68,10 @@ export const countClientChanges = async data => {
     raw: true
   };
   const quantity = await db.Change.count(query);
-  console.log('quantity.', quantity);
 
   return quantity;
 };
 export const bulkCreateChanges = async changes => {
-  console.log('changes>>>>>>>>>>>>>>>>>>>>>>>>>>>', changes);
   const res = await db.Change.bulkCreate(changes);
   return res;
 };
@@ -103,13 +101,15 @@ export const getByField = async data => {
     fieldId,
     order,
     toVal,
-    limit = 50,
+    limit,
     pageNumber = 1,
-    action
+    action,
+    attributes,
+    group
   } = data;
   if (!clientKey) throw 'clientKey is required';
 
-  const offset = pageNumber ? (pageNumber - 1) * limit : 0;
+  const offset = limit ? (pageNumber ? (pageNumber - 1) * limit : 0) : 0;
 
   const where = { clientKey, fieldId };
   toVal && (where.toVal = toVal);
@@ -120,9 +120,31 @@ export const getByField = async data => {
     limit,
     where,
     raw: true,
-    order
+    order,
+    attributes,
+    group
   };
-  console.log('queryqueryquery', query, toVal);
   const result = await db.Change.findAndCountAll(query);
+  return result;
+};
+
+export const getByChangedFields = async data => {
+  const { clientKey, order, attributes, group, limit, pageNumber } = data;
+  if (!clientKey) throw 'clientKey is required';
+
+  const offset = limit ? (pageNumber ? (pageNumber - 1) * limit : 0) : 0;
+
+  const where = { clientKey };
+
+  const query = {
+    offset,
+    limit,
+    where,
+    raw: true,
+    order,
+    attributes,
+    group
+  };
+  const result = await db.Change.findAll(query);
   return result;
 };

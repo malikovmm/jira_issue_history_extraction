@@ -1,19 +1,21 @@
 import React from 'react';
 import styled from 'styled-components';
 const ViewButton = styled.button`
-  background: ${props => (props.active ? '#505f79' : '#f4f5f7')};
-  color: ${props => (props.active ? '#f4f5f7' : '#505f79')};
-  font-size: 18px;
+  background: ${props => (props.active ? '#0052cc' : '#f4f5f7')};
+  color: ${props => (props.active ? '#f4f5f7' : '#0052cc')};
+  font-size: 16px;
   border-radius: 3px;
   transition: all 0.3s;
   outline: none;
-  border: 1px solid #505f79;
+  border: none;
+  padding: 7px 15px;
+  font-weight: 600;
   &:hover {
-    background: #505f79;
-    color: #f4f5f7;
+    background: #deebffe5;
+    color: #0052cc;
   }
   &:active {
-    background: #505f79;
+    background: #0052cc;
     color: #f4f5f7;
   }
 `;

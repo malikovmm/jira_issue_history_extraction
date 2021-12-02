@@ -4,7 +4,8 @@
 import { isEqual, isObject, mapObject, omit, pick } from 'underscore';
 import { default as fetch } from '../ap/request';
 import { IS_DEV } from '../constants';
-
+import { fieldsList } from '../database/models/change';
+import { inspect } from 'util';
 export { fetch };
 
 // @TODO: fill in what this function does and why it exists
@@ -148,3 +149,86 @@ export function sleep(ms) {
     setTimeout(resolve, ms);
   });
 }
+
+export function mergeArrays(...arrs) {
+  if (!arrs.length) return;
+  const res = [];
+  for (let i of arrs) {
+    if (!i) continue;
+    res.push(...i);
+  }
+  return res;
+}
+
+export function formatSeconds(seconds) {
+  const weeks = Math.floor(seconds / 60 / 60 / 8 / 5);
+  const days = Math.floor(seconds / 60 / 60 / 8) % 5;
+  const hours = Math.floor(seconds / 60 / 60) % 8;
+  const minutes = Math.floor(seconds / 60) % 60;
+  return `${weeks}w ${days}d ${hours}h ${minutes}m`;
+}
+
+export const getValidatedOrder = (sortKey, sortOrder) => {
+  if (!fieldsList.includes(sortKey)) {
+    return false;
+  }
+  if (!sortOrder.toLowerCase() == 'asc' || !sortOrder.toLowerCase() == 'desc') {
+    return false;
+  }
+  return [[sortKey.toUpperCase(), sortOrder.toUpperCase()]];
+};
+export const getValidatedSortKey = sortKey => {
+  if (!sortKey || !fieldsList.includes(sortKey)) {
+    return undefined;
+  }
+  return sortKey;
+};
+export const getValidatedSortOrder = sortOrder => {
+  if (
+    !sortOrder ||
+    !sortOrder.toLowerCase() == 'asc' ||
+    !sortOrder.toLowerCase() == 'desc'
+  ) {
+    return undefined;
+  }
+  return sortOrder;
+};
+
+export const getCommentAction = comment =>
+  comment.created == comment.updated ? 'create' : 'update';
+export const getHistoryAction = item => {
+  switch (item.field) {
+    // case 'timeestimate': {
+    //   if (!item.fromString && !!item.toString) return 'create';
+    //   if (!!item.fromString && !!item.toString) return 'update';
+    //   if (!!item.fromString && !~~item.toString) return 'delete';
+    //   console.log('timeestimate wrong action');
+    //   break;
+    // }
+
+    default: {
+      if (!item.fromString && !!item.toString) return 'create';
+      if (!!item.fromString && !!item.toString) return 'update';
+      if (!!item.fromString && !item.toString) return 'delete';
+      break;
+    }
+  }
+};
+
+/**
+ * YYYY-MM-DDTHH:mm 0000 -> YYYY-MM-DDTHH:mm:00 0000
+ * @param {*} date
+ */
+export const addSecondsToTime = date => {
+  if (!date) return;
+  const splited = date.split(' ');
+  return [splited[0] + ':00', splited[1]].join(' ');
+};
+
+export const ins = obj =>
+  inspect(obj, {
+    showHidden: true,
+    depth: null,
+    colors: true,
+    maxArrayLength: null
+  });

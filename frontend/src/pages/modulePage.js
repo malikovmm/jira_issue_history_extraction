@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import styled from 'styled-components';
-import { getAllIssues, getUsers } from '../api/atlassian';
+import { getUsers } from '../api/atlassian';
 import { withServerSideAuth } from '../middleware/authenticate';
 import { fetch } from '../ap';
 import Select from '@atlaskit/select';
@@ -13,16 +13,20 @@ import { DynamicTableStateless } from '@atlaskit/dynamic-table';
 import Avatar from '@atlaskit/avatar';
 import Lozenge from '@atlaskit/lozenge';
 import { DEFAULT_CHANGES_ON_PAGE } from '../constants';
+// import {
+//   getValidatedOrder,
+//   getValidatedSortKey,
+//   getValidatedSortOrder
+// } from '../database/util';
+import FilterBar from '../components/FilterBar';
+import useNextLoader from '../hooks/useNextLoader';
+import ViewModeButton from '../components/viewModeButton';
+import VM2 from '../components/VM2';
 import {
   getValidatedOrder,
   getValidatedSortKey,
   getValidatedSortOrder
-} from '../database/util';
-import FilterBar from '../components/FilterBar';
-import useNextLoader from '../hooks/useNextLoader';
-import ViewModeButton from '../components/viewModeButton';
-import TransitionsTable from '../components/TransitionsTable';
-import VM2 from '../components/VM2';
+} from '../utils';
 const tableHead = {
   cells: [
     {
@@ -65,7 +69,7 @@ const limitOptions = [
   { label: '35', value: 35 },
   { label: '40', value: 40 }
 ];
-// import { getAllUsers } from './api/users';
+
 const DataContainer = styled.div`
   width: 80%;
   margin: 0 auto;
@@ -172,7 +176,7 @@ const ModeBar = styled.div`
   gap: 5px;
 `;
 export default function ModulePage(props) {
-  // console.log('props>>>', props);
+  console.log('props>>>', props);
   const [sortKey, setSortKey] = useState(props.sortKey || 'id');
   const [sortOrder, setSortOrder] = useState(props.sortOrder || 'ASC');
   const [limit, setLimit] = useState(props.limit);
@@ -364,26 +368,17 @@ const ins = obj =>
 
 async function getServerSidePropsModule(ctx) {
   const { req, query } = ctx;
-  // {
-  //   issueKey: issueKeyFilter,
-  //   user: userFilter,
-  //   field: fieldFilter,
-  //   dateFrom: dateFromFilter,
-  //   dateTo: dateToFilter
-  // }
   const {
     pageNumber = 1,
     limit = DEFAULT_CHANGES_ON_PAGE,
     sortKey,
     sortOrder,
-    // filters
     issueKey,
     user,
     field,
     dateFrom,
     dateTo
   } = query;
-  // console.log('QUERY', query);
 
   const props = {
     pageNumber: Number(pageNumber) || 1,
@@ -406,12 +401,7 @@ async function getServerSidePropsModule(ctx) {
         dateFrom: dateFrom,
         dateTo: dateTo
       });
-      props.llIssues = await getAllIssues(req.context, {
-        fields: ['project', 'comment'],
-        expand: ['changelog', 'transitions']
-      });
       props.changesTotal = rawChangesCount;
-      // console.log('rawChangesCount', rawChangesCount);
       if (req.context.clientInfo.clientKey && rawChangesCount == 0) {
         const clientChanges = await countClientChanges({
           clientKey: req.context.clientInfo.clientKey
@@ -446,7 +436,7 @@ async function getServerSidePropsModule(ctx) {
         props.changes = rawChanges;
       }
     }
-    console.log('returned', props);
+    // console.log('returned', props);
     return {
       props
     };

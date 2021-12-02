@@ -1,7 +1,7 @@
 import { authenticate } from '../../../api/atlassian';
 import { bulkCreateChanges } from '../../../api/changeLog';
 import { collectAllowedIds } from '../../../database/models/change';
-import { getHistoryAction, ins } from '../../../database/util';
+import { getHistoryAction, ins } from '../../../utils';
 
 function handleToVal(item) {
   switch (item.field) {

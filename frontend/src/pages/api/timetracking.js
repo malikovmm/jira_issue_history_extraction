@@ -2,10 +2,9 @@ import { Op } from 'sequelize';
 import { authenticate } from '../../api/atlassian';
 import { getByField } from '../../api/changeLog';
 
+//TODO: It can be more optimizated
 const issueUpdateHandler = async req => {
   if (!req) throw 'wrong request object';
-  //   if (req.query.fields == 'estimate') {}
-  //   if (req.query.fields == 'logged') {}
   const { fields } = req.query;
   const reqSpent = fields == 'all' || fields == 'spent';
   const reqEstimate = fields == 'all' || fields == 'estimate';
@@ -14,48 +13,67 @@ const issueUpdateHandler = async req => {
     ? await getByField({
         clientKey: req.context.clientInfo.clientKey,
         fieldId: 'timespent',
-        order: [['changedAt', 'DESC']],
+        order: [['changedAt', 'ASC']],
         toVal: { [Op.ne]: null },
-        action: 'update'
+        action: { [Op.or]: ['update', 'create'] }
       })
-    : null;
+    : {};
   const tEstimate = reqEstimate
     ? await getByField({
         clientKey: req.context.clientInfo.clientKey,
         fieldId: 'timeestimate',
-        order: [['changedAt', 'DESC']],
+        order: [['changedAt', 'ASC']],
         toVal: { [Op.ne]: null },
         action: 'update'
       })
-    : null;
-  const keyToProp = {};
+    : {};
+  const tEstimateEdited = tEstimate.rows.filter(it => it.fromVal != it.toVal);
+  const tEstimateKeys = Array.from(
+    new Set(tEstimateEdited.map(it => it.issueKey))
+  );
+
+  const keyToTime = {};
   if (reqSpent)
     for (let i of tSpent.rows) {
-      console.log('~~i.toVal', ~~i.toVal, keyToProp[i.issueKey]);
-      if (keyToProp[i.issueKey]) {
-        keyToProp[i.issueKey].spent = ~~keyToProp[i.issueKey].spent + ~~i.toVal;
+      if (keyToTime[i.issueKey]) {
+        keyToTime[i.issueKey].spent = ~~i.toVal;
       } else {
-        keyToProp[i.issueKey] = { spent: 0 };
+        keyToTime[i.issueKey] = {
+          ...keyToTime[i.issueKey],
+          spent: ~~i.toVal
+        };
       }
     }
   if (reqEstimate)
-    for (let i of tEstimate.rows) {
-      if (keyToProp[i.issuekey]) {
-        keyToProp[i.issueKey].estimate =
-          ~~keyToProp[i.issueKey].estimate + ~~i.toVal;
+    for (let i of tEstimateEdited) {
+      if (keyToTime[i.issuekey]) {
+        keyToTime[i.issueKey].estimate = ~~i.toVal;
       } else {
-        keyToProp[i.issueKey] = { estimate: i.toVal ? Number(i.toVal) : 0 };
+        keyToTime[i.issueKey] = {
+          ...keyToTime[i.issueKey],
+          estimate: ~~i.toVal
+        };
       }
     }
-
-  console.log(
-    'tSpent,tEstimate>>',
-    tSpent,
-    tEstimate,
-    keyToProp,
-    '<<tSpent tEstimate'
+  const keyToTimeEntries = Object.entries(keyToTime);
+  const sumTotal = keyToTimeEntries.reduce(
+    (acc, [k, v]) => {
+      console.log(k, v, acc);
+      acc.spent += ~~v.spent;
+      acc.estimate += ~~v.estimate;
+      return acc;
+    },
+    { spent: 0, estimate: 0 }
   );
-  return { tSpent, tEstimate, keyToProp };
+  const tSpentKeys = keyToTimeEntries.reduce((acc, [k, v]) => {
+    if (v.spent && k) acc.push(k);
+    return acc;
+  }, []);
+  return {
+    sumTotal,
+    tSpentKeys,
+    tEstimateKeys
+  };
 };
 
 export default async function timeTracking(req, res) {

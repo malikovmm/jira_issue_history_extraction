@@ -1,12 +1,13 @@
 import { authenticate, getUsers } from '../../api/atlassian';
 import { bulkCreateChanges, getChanges } from '../../api/changeLog';
 import { getAllIssues, getAllIssueChangelogs } from '../../api/atlassian';
+
+import { DEFAULT_CHANGES_ON_PAGE } from '../../constants';
 import {
   getValidatedOrder,
   getValidatedSortKey,
   getValidatedSortOrder
-} from '../../database/util';
-import { DEFAULT_CHANGES_ON_PAGE } from '../../constants';
+} from '../../utils';
 
 const doInit = async req => {
   try {

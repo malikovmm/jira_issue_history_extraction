@@ -9,9 +9,7 @@ import moment from 'moment';
 
 import * as util from '../utils';
 import { hostRequest } from './oauth';
-import db, { ins } from '../database';
-import { getCommentAction, getHistoryAction } from '../database/util';
-import { inspect } from 'util';
+import db from '../database';
 import { collectAllowedIds } from '../database/models/change';
 // @TODO: This should probably be an env variable
 export const hostRegex = /[^.]*\.(atlassian\.net|jira-dev\.com|atlassian\.com|jira\.com)$/i;
@@ -522,15 +520,17 @@ export async function getAllIssueChangelogs(context, issue) {
       fieldType: 'comment',
       fieldId: 'comment',
       isComment: true,
-      action: getCommentAction(comment),
-      clientKey: context.clientInfo.clientKey
+      action: util.getCommentAction(comment),
+      clientKey: context.clientInfo.clientKey,
+      toVal: collectAllowedIds.includes('comment') ? handleToVal(item) : null,
+      fromVal: collectAllowedIds.includes('comment')
+        ? handleFromVal(item)
+        : null
     });
   }
   for (let history of issue.changelog.histories) {
-    // console.log('history', history, '<history');
     for (let item of history.items) {
       const collectAllowed = collectAllowedIds.includes(item.fieldId);
-      // console.log('item >>>>>>>>', item, { collectAllowed }, '<<<');
       preparedChanges.push({
         changeId: history.id,
         issueKey: issue.key,
@@ -541,10 +541,10 @@ export async function getAllIssueChangelogs(context, issue) {
         fieldType: item.fieldtype,
         fieldId: item.fieldId,
         isComment: false,
-        action: getHistoryAction(item),
+        action: util.getHistoryAction(item),
         clientKey: context.clientInfo.clientKey,
-        fromVal: collectAllowed ? handleToVal(item) : null,
-        toVal: collectAllowed ? handleFromVal(item) : null
+        toVal: collectAllowed ? handleToVal(item) : null,
+        fromVal: collectAllowed ? handleFromVal(item) : null
       });
     }
   }
@@ -572,10 +572,10 @@ export async function getAllIssueChangelogs(context, issue) {
               fieldType: item.fieldtype,
               fieldId: item.fieldId,
               isComment: false,
-              action: getHistoryAction(item),
+              action: util.getHistoryAction(item),
               clientKey: context.clientInfo.clientKey,
-              fromVal: collectAllowed ? handleToVal(item) : null,
-              toVal: collectAllowed ? handleFromVal(item) : null
+              toVal: collectAllowed ? handleToVal(item) : null,
+              fromVal: collectAllowed ? handleFromVal(item) : null
             };
           })
         );
@@ -602,11 +602,48 @@ export async function getAllStatuses(context) {
   });
 }
 export async function searchProjects(context, options = {}) {
-  const { maxResults = 100, startAt = 0, id, expand } = options;
+  const { maxResults = 100, startAt = 0, id } = options;
   return await hostRequest(context.clientInfo.value, {
     accountId: context.accountId,
     url: `/rest/api/3/project/search?maxResults=${maxResults}&startAt=${startAt}${
       id.length > 0 ? '&id=' + id.join('&id=') : ''
     }`
   });
+}
+
+export async function getWorklog(context, options = {}) {
+  const { issueKey } = options;
+  if (!issueKey) throw 'issueKey is required';
+  return await hostRequest(context.clientInfo.value, {
+    accountId: context.accountId,
+    url: `/rest/api/3/issue/${issueKey}/worklog?expand=properties`
+  });
+}
+
+export async function getAllIssueWorklogs(context, options = {}) {
+  const { issue } = options;
+  if (!issue.key) throw 'issueKey is required';
+
+  const worklogs = await getWorklog(context, {
+    issueKey: issue.key
+  });
+  const prepared = [];
+  for (let i of worklogs.worklogs) {
+    prepared.push({
+      changeId: i.id,
+      issueKey: issue.key,
+      projectId: issue.fields.project.id,
+      changedAt: i.updated,
+      authorId: i.updateAuthor.accountId,
+      field: 'timespent',
+      fieldType: 'timespent',
+      fieldId: 'timespent',
+      isComment: false,
+      action: 'create',
+      clientKey: context.clientInfo.clientKey,
+      fromVal: null,
+      toVal: collectAllowedIds.includes('timespent') ? i.timeSpentSeconds : null
+    });
+  }
+  return prepared;
 }

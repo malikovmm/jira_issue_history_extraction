@@ -1,27 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { DynamicTableStateless } from '@atlaskit/dynamic-table';
-import Pagination from './../components/pagination';
+import React, { useState, useEffect } from 'react';
 import { fetch } from '../ap';
-import useNextLoader from '../hooks/useNextLoader';
-import { getToken } from '../ap/request';
 import { useAsync } from 'react-use';
 import AllTransitions from './AllTransitions';
 
-const tableHead = {
-  cells: [
-    {
-      key: 'id',
-      content: 'Id',
-      isSortable: true
-    },
-    {
-      key: 'issuekey',
-      content: 'issuekey'
-    }
-  ]
-};
-
-export default function TransitionsTable(props) {
+export default function TransitionsTable() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(15);
   const { value: transitions, error, loading: trLoading } = useAsync(async () =>
