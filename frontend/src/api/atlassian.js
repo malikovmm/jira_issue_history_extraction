@@ -46,10 +46,7 @@ export function findClientInfoByClientKey(clientKey) {
       key: 'clientInfo'
     }
   }).then(response => {
-    if (response) {
-      const clientInfo = JSON.parse(JSON.stringify({ ...response.dataValues }));
-      return clientInfo;
-    }
+    return response ? response.toJSON() : response;
   });
 }
 
@@ -240,9 +237,9 @@ export async function authenticate(
   // but we still allow the issuer to be used if 'aud' is missing.
   // Session JWTs make use of this (the issuer is the add-on in this case)
   let clientKey = issuer;
-  if (unverifiedClaims.aud && unverifiedClaims.aud.length > 0) {
-    clientKey = unverifiedClaims.aud[0];
-  }
+  // if (unverifiedClaims.aud && unverifiedClaims.aud.length > 0) {
+  //   clientKey = unverifiedClaims.aud[0];
+  // }
 
   const clientInfo = await findClientInfoByClientKey(clientKey, req.context);
   if (!clientInfo && !verifiedClaims && !options.allowNewClientInfo) {
@@ -377,11 +374,10 @@ export function createSessionToken(authorizer) {
   var now = moment().utc();
   var token = jwt.encodeSymmetric(
     {
-      iss: process.env.PLUGIN_KEY,
+      iss: clientKey,
       sub: accountId,
       iat: now.unix(),
       exp: now.add(maxTokenAge, 'milliseconds').unix(),
-      aud: [clientKey],
       context: {
         ...(context || {}),
         clientId
