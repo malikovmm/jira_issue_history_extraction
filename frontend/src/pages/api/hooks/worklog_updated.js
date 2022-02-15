@@ -11,7 +11,7 @@ export default async function hook(req, res) {
     })
     .catch(e => {
       const { message = e, statusCode = 500 } = e;
-      console.log('authenticate error', e);
+      console.log('worklog_updated > authenticate error', e);
       return res.status(statusCode).json({
         success: false,
         error: message

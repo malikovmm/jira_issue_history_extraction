@@ -84,7 +84,7 @@ export default async function timeTracking(req, res) {
     })
     .catch(e => {
       const { message = e, statusCode = 500 } = e;
-      console.log('authenticate error', e);
+      console.log('timetracking > authenticate error', e);
       return res.status(statusCode).json({
         success: false,
         error: message

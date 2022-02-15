@@ -12,7 +12,10 @@ export const fieldsList = [
   'isComment',
   'action',
   'fromVal',
-  'toVal'
+  'toVal',
+  'attachment',
+
+  'issue' // when issue created/deleted. To not create unnecessary entries
 ];
 /**
  * field ids, where allow to collect data (fromString, toString, to, from)
@@ -36,7 +39,7 @@ export default function (sequelize, DataTypes) {
       },
       changeId: {
         type: DataTypes.INTEGER,
-        allowNull: false
+        allowNull: true
       },
       issueKey: {
         type: DataTypes.STRING,

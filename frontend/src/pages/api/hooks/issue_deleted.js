@@ -1,7 +1,7 @@
 import { authenticate } from '../../../api/atlassian';
 import { createChange } from '../../../api/changeLog';
 
-const issueCreateHandler = async req => {
+const issueDeleteHandler = async req => {
   if (!req) throw 'wrong request object';
   if (!req.body) throw 'request object must have body';
   if (!req.body.issue) throw 'body must have issue object';
@@ -25,7 +25,7 @@ const issueCreateHandler = async req => {
     fieldType: 'jira',
     fieldId: 'issue',
     isComment: false,
-    action: 'create',
+    action: 'delete',
     clientKey: req.context.clientInfo.clientKey,
     fromVal: null,
     toVal: null
@@ -36,8 +36,8 @@ const issueCreateHandler = async req => {
 export default async function hook(req, res) {
   authenticate(req, false, { skipLicense: true })
     .then(async () => {
-      console.log('issue_created>>>>>>>>>>>');
-      await issueCreateHandler(req);
+      console.log('issue_deleted>>>>>>>>>>>');
+      await issueDeleteHandler(req);
       return res.json({
         success: true
       });

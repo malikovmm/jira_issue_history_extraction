@@ -239,6 +239,31 @@
         "event": "option_timetracking_changed",
         "url": "/api/hooks/option_timetracking_changed",
         "excludeBody": false
+      },
+      {
+        "event": "jira:issue_created",
+        "url": "/api/hooks/issue_created",
+        "excludeBody": false
+      },
+      {
+        "event": "jira:issue_deleted",
+        "url": "/api/hooks/issue_deleted",
+        "excludeBody": false
+      },
+      {
+        "event": "jira:issue_deleted",
+        "url": "/api/hooks/issue_deleted",
+        "excludeBody": false
+      },
+      {
+        "event": "attachment_created",
+        "url": "/api/hooks/attachment_created?jira_project_id=${project.id}&jira_attachment_id=${attachment.id}&jira_issue_id=${issue.id}&jira_issue_key=${issue.key}&jira_project_key=${project.key}",
+        "excludeBody": false
+      },
+      {
+        "event": "attachment_deleted",
+        "url": "/api/hooks/attachment_deleted?jira_project_id=${project.id}&jira_attachment_id=${attachment.id}&jira_issue_id=${issue.id}&jira_issue_key=${issue.key}&jira_project_key=${project.key}",
+        "excludeBody": false
       }
     ]
   }

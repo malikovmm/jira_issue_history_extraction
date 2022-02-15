@@ -33,7 +33,7 @@ export default async function fieldChanges(req, res) {
     })
     .catch(e => {
       const { message = e, statusCode = 500 } = e;
-      console.log('authenticate error', e);
+      console.log('function fieldChanges > authenticate error', e);
       return res.status(statusCode).json({
         success: false,
         error: message

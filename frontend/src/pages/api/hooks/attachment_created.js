@@ -1,34 +1,29 @@
 import { authenticate } from '../../../api/atlassian';
-import { createChange } from '../../../api/changeLog';
+import { collectAllowedIds } from '../../../database/models/change';
 
-const issueCreateHandler = async req => {
+const attachmentCreateHndler = async req => {
   if (!req) throw 'wrong request object';
   if (!req.body) throw 'request object must have body';
-  if (!req.body.issue) throw 'body must have issue object';
-  if (!req.body.user) throw 'body must have user object';
-  const {
-    key: issueKey,
-    fields: {
-      updated,
-      project: { id: projectId }
-    }
-  } = req.body.issue;
-  const { accountId } = req.body.user;
-
+  if (!req.body.attachment) throw 'request query params must have attachment';
+  console.log('attachment created>>>>>>');
+  const { jira_issue_key, jira_issue_id, jira_project_id } = req.query;
+  const { accountId, clientKey } = req.context;
+  const { created, content } = req.body.attachment;
+  const collectAllowed = collectAllowedIds.includes('attachment');
   const change = {
     changeId: null,
-    issueKey: issueKey,
-    projectId: projectId,
-    changedAt: updated,
+    issueKey: jira_issue_key,
+    projectId: jira_project_id,
+    changedAt: created,
     authorId: accountId,
-    field: 'issue',
+    field: 'attachment',
     fieldType: 'jira',
-    fieldId: 'issue',
+    fieldId: 'attachment',
     isComment: false,
     action: 'create',
     clientKey: req.context.clientInfo.clientKey,
     fromVal: null,
-    toVal: null
+    toVal: collectAllowed ? content : null
   };
   return await createChange(change);
 };
@@ -36,8 +31,8 @@ const issueCreateHandler = async req => {
 export default async function hook(req, res) {
   authenticate(req, false, { skipLicense: true })
     .then(async () => {
-      console.log('issue_created>>>>>>>>>>>');
-      await issueCreateHandler(req);
+      console.log('attachment_created>>>>>>>>>>>');
+      await attachmentCreateHndler(req);
       return res.json({
         success: true
       });

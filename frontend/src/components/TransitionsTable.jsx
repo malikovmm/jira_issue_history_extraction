@@ -13,10 +13,14 @@ export default function TransitionsTable() {
         limit,
         names: true
       }
-    }).then(data => {
-      console.log('data', data);
-      return data;
     })
+      .then(data => {
+        console.log('data', data);
+        return data;
+      })
+      .catch(e => {
+        console.log('TransitionsTable fetch error > ', e);
+      })
   );
   useEffect(() => {
     console.log('error tt', error);
