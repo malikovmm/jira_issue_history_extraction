@@ -1,4 +1,4 @@
-import { authenticate, getUsers } from '../../api/atlassian';
+import { authenticate, getIssueKeysByIds, getUsers } from '../../api/atlassian';
 import { bulkCreateChanges, getChanges } from '../../api/changeLog';
 import { getAllIssues, getAllIssueChangelogs } from '../../api/atlassian';
 
@@ -8,6 +8,7 @@ import {
   getValidatedSortKey,
   getValidatedSortOrder
 } from '../../utils';
+import extendChangeData from '../../utils/extendChangeData';
 
 const doInit = async req => {
   try {
@@ -64,32 +65,7 @@ export default async function initHistory(req, res) {
         order: getValidatedOrder(order.sortKey, order.sortOrder),
         clientKey: req.context.clientInfo.clientKey
       });
-
-      const usersToFetch = new Set();
-      for (let i of rawChanges) {
-        usersToFetch.add(i.authorId);
-        i.changedAt = i.changedAt.toString();
-        i.createdAt = i.createdAt.toString();
-        i.updatedAt = i.updatedAt.toString();
-      }
-
-      const usersRaw = await getUsers(req.context, {
-        accountIds: Array.from(usersToFetch)
-      });
-
-      for (let i of usersRaw.values) {
-        rawChanges
-          .filter(({ authorId }) => authorId == i.accountId)
-          .forEach(it => {
-            it.editorData = {
-              self: i.self,
-              avatarUrls: i.avatarUrls,
-              displayName: i.displayName,
-              timeZone: i.timeZone
-            };
-          });
-      }
-
+      await extendChangeData(rawChanges, req.context);
       return res.json({ count, rows: rawChanges });
     })
     .catch(e => {

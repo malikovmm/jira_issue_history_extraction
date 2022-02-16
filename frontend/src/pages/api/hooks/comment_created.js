@@ -8,11 +8,11 @@ const commentCreatedHandler = async req => {
   if (!req.body.comment) throw 'body must have comment';
   if (!req.body.issue) throw 'body must have issue';
   const comment = req.body.comment;
-  const { key: issueKey } = req.body.issue;
+  const { id: issueId } = req.body.issue;
   console.log('req.body', ins(req.body));
   return await createChange({
     changeId: comment.id,
-    issueKey: issueKey,
+    issueId: issueId,
     projectId: req.body.issue.fields.project.id,
     changedAt: comment.created,
     authorId: comment.author.accountId,

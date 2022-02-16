@@ -8,12 +8,12 @@ const commentUpdatedHandler = async req => {
   if (!req.body.comment) throw 'body must have comment';
   if (!req.body.issue) throw 'body must have issue';
   const comment = req.body.comment;
-  const { key: issueKey } = req.body.issue;
+  const { id: issueId } = req.body.issue;
 
   const collectAllowed = collectAllowedIds.includes('comment');
   return await createChange({
     changeId: comment.id,
-    issueKey: issueKey,
+    issueId: issueId,
     projectId: issue.fields.project.id,
     changedAt: comment.updated,
     authorId: comment.updateAuthor.accountId,

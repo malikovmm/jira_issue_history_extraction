@@ -1,5 +1,5 @@
 import { Op } from 'sequelize';
-import { authenticate } from '../../api/atlassian';
+import { authenticate, getIssueKeysByIds } from '../../api/atlassian';
 import { getByField } from '../../api/changeLog';
 
 //TODO: It can be more optimizated
@@ -28,29 +28,30 @@ const issueUpdateHandler = async req => {
       })
     : {};
   const tEstimateEdited = tEstimate.rows.filter(it => it.fromVal != it.toVal);
-  const tEstimateKeys = Array.from(
-    new Set(tEstimateEdited.map(it => it.issueKey))
-  );
+  const tEstimateIds = [...new Set(tEstimateEdited.map(it => it.issueId))];
+  const tEstimateKeys = await getIssueKeysByIds(req.context, {
+    issueIds: tEstimateIds
+  }); // Map (id to key)
 
   const keyToTime = {};
   if (reqSpent)
     for (let i of tSpent.rows) {
-      if (keyToTime[i.issueKey]) {
-        keyToTime[i.issueKey].spent = ~~i.toVal;
+      if (keyToTime[tEstimateKeys.get(i.issueId)]) {
+        keyToTime[tEstimateKeys.get(i.issueId)].spent = ~~i.toVal;
       } else {
-        keyToTime[i.issueKey] = {
-          ...keyToTime[i.issueKey],
+        keyToTime[tEstimateKeys.get(i.issueId)] = {
+          ...keyToTime[tEstimateKeys.get(i.issueId)],
           spent: ~~i.toVal
         };
       }
     }
   if (reqEstimate)
     for (let i of tEstimateEdited) {
-      if (keyToTime[i.issuekey]) {
-        keyToTime[i.issueKey].estimate = ~~i.toVal;
+      if (keyToTime[tEstimateKeys.get(i.issueId)]) {
+        keyToTime[tEstimateKeys.get(i.issueId)].estimate = ~~i.toVal;
       } else {
-        keyToTime[i.issueKey] = {
-          ...keyToTime[i.issueKey],
+        keyToTime[tEstimateKeys.get(i.issueId)] = {
+          ...keyToTime[tEstimateKeys.get(i.issueId)],
           estimate: ~~i.toVal
         };
       }
@@ -72,7 +73,7 @@ const issueUpdateHandler = async req => {
   return {
     sumTotal,
     tSpentKeys,
-    tEstimateKeys
+    tEstimateKeys: Array.from(tEstimateKeys.values())
   };
 };
 

@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
 import styled from 'styled-components';
-import { getUsers } from '../api/atlassian';
 import { withServerSideAuth } from '../middleware/authenticate';
 import { fetch } from '../ap';
 import Select from '@atlaskit/select';
@@ -13,11 +12,6 @@ import { DynamicTableStateless } from '@atlaskit/dynamic-table';
 import Avatar from '@atlaskit/avatar';
 import Lozenge from '@atlaskit/lozenge';
 import { DEFAULT_CHANGES_ON_PAGE } from '../constants';
-// import {
-//   getValidatedOrder,
-//   getValidatedSortKey,
-//   getValidatedSortOrder
-// } from '../database/util';
 import FilterBar from '../components/FilterBar';
 import useNextLoader from '../hooks/useNextLoader';
 import ViewModeButton from '../components/viewModeButton';
@@ -27,6 +21,8 @@ import {
   getValidatedSortKey,
   getValidatedSortOrder
 } from '../utils';
+import extendChangeData from '../utils/extendChangeData';
+import { getIssueIdByKey } from '../api/atlassian';
 const tableHead = {
   cells: [
     {
@@ -389,13 +385,13 @@ async function getServerSidePropsModule(ctx) {
     getValidatedSortOrder(sortOrder) && (props.sortOrder = sortOrder);
 
     if (req.context && req.context.clientInfo) {
+      const issueId = await getIssueIdByKey(req.context, { issueKey });
       const { count: rawChangesCount, rows: rawChanges } = await getChanges({
         pageNumber: props.pageNumber,
         limit: props.limit,
         order: getValidatedOrder(sortKey, sortOrder),
         clientKey: req.context.clientInfo.clientKey,
-
-        issueKey,
+        issueId,
         authorId: user,
         field,
         dateFrom: dateFrom,
@@ -409,30 +405,8 @@ async function getServerSidePropsModule(ctx) {
         if (clientChanges == 0) props.doInit = true;
       } else {
         props.doInit = false;
-        const usersToFetch = new Set();
-        for (let i of rawChanges) {
-          usersToFetch.add(i.authorId);
-          i.changedAt = i.changedAt.toString();
-          i.createdAt = i.createdAt.toString();
-          i.updatedAt = i.updatedAt.toString();
-        }
 
-        const usersRaw = await getUsers(req.context, {
-          accountIds: Array.from(usersToFetch)
-        });
-
-        for (let i of usersRaw.values) {
-          rawChanges
-            .filter(({ authorId }) => authorId == i.accountId)
-            .forEach(it => {
-              it.editorData = {
-                self: i.self,
-                avatarUrls: i.avatarUrls,
-                displayName: i.displayName,
-                timeZone: i.timeZone
-              };
-            });
-        }
+        await extendChangeData(rawChanges, req.context);
         props.changes = rawChanges;
       }
     }

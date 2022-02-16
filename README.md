@@ -45,7 +45,7 @@ iframe using proxies.
 | ------ | ------ |------ |
 | id | INT |  |
 | changeId | INT | id of changelog, or comment, if it is comment |
-| IssueKey | STRING | the issue key this change applies to |
+| issueId | STRING | the issue key this change applies to |
 | changedAt | DATE | change time |
 | authorId | STRING | id of the user who made the change |
 | field | STRING | changed field name |

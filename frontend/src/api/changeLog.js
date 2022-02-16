@@ -12,7 +12,7 @@ export const getChanges = async data => {
     limit,
     id,
     changeId,
-    issueKey,
+    issueId,
     changedAt,
     authorId,
     field,
@@ -30,7 +30,7 @@ export const getChanges = async data => {
   const where = { clientKey };
   id && (where.id = id);
   changeId && (where.changeId = changeId);
-  issueKey && (where.issueKey = issueKey);
+  issueId && (where.issueId = issueId);
   changedAt && (where.changedAt = changedAt);
   authorId && (where.authorId = authorId);
   field && (where.field = { [Op.like]: '%' + field + '%' });

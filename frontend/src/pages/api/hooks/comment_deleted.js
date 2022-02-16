@@ -8,11 +8,11 @@ const commentDeletedHandler = async req => {
   if (!req.body.comment) throw 'body must have comment';
   if (!req.body.issue) throw 'body must have issue';
   const comment = req.body.comment;
-  const { key: issueKey } = req.body.issue;
+  const { id: issueId } = req.body.issue;
 
   return await createChange({
     changeId: comment.id,
-    issueKey: issueKey,
+    issueId: issueId,
     projectId: issue.fields.project.id,
     changedAt: Date.now(),
     authorId: comment.updateAuthor.accountId,

@@ -17,7 +17,7 @@ const attachmentDeleteHandler = async req => {
   const collectAllowed = collectAllowedIds.includes('attachment');
   const change = {
     changeId: null,
-    issueKey: jira_issue_key,
+    issueId: jira_issue_id,
     projectId: jira_project_id,
     changedAt: created,
     authorId: accountId || authorAccountId,

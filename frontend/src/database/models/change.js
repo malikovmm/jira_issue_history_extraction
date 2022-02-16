@@ -2,7 +2,7 @@
 export const fieldsList = [
   'id',
   'changeId',
-  'issueKey',
+  'issueId',
   'projectId',
   'changedAt',
   'authorId',
@@ -41,7 +41,7 @@ export default function (sequelize, DataTypes) {
         type: DataTypes.INTEGER,
         allowNull: true
       },
-      issueKey: {
+      issueId: {
         type: DataTypes.STRING,
         allowNull: false
       },

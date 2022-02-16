@@ -8,8 +8,8 @@ import Pagination from './../components/pagination';
 const tableHead = {
   cells: [
     {
-      key: 'issuekey',
-      content: 'issueKey'
+      key: 'issueId',
+      content: 'issueId'
     },
     {
       key: 'changedAt',
@@ -47,7 +47,7 @@ export default function IssueTransitionsTable({ statusId }) {
         key: `row-${ix}`,
         cells: [
           {
-            key: `issueKey_${ix}`,
+            key: `issueId_${ix}`,
             content: (
               <a
                 rel="noreferrer"

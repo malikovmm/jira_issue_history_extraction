@@ -12,7 +12,8 @@ import { hostRequest } from './oauth';
 import db from '../database';
 import { collectAllowedIds } from '../database/models/change';
 // @TODO: This should probably be an env variable
-export const hostRegex = /[^.]*\.(atlassian\.net|jira-dev\.com|atlassian\.com|jira\.com)$/i;
+export const hostRegex =
+  /[^.]*\.(atlassian\.net|jira-dev\.com|atlassian\.com|jira\.com)$/i;
 // @TODO: this should probably be an env variable
 // This is for creating JWT tokens for requests to JIRA
 export const jwtTokenValidityInMinutes = 5;
@@ -369,8 +370,13 @@ export async function authenticate(
 
 // Create a JWT token that can be used instead of a session cookie
 export function createSessionToken(authorizer) {
-  const { accountId, clientKey, context = {}, sharedSecret, clientId } =
-    authorizer || {};
+  const {
+    accountId,
+    clientKey,
+    context = {},
+    sharedSecret,
+    clientId
+  } = authorizer || {};
   var now = moment().utc();
   var token = jwt.encodeSymmetric(
     {
@@ -419,21 +425,41 @@ export async function getAddonDetails(context) {
   });
 }
 export async function getIssue(context, options = {}) {
-  const { issueKey, fields = ['comment'], expand = ['changelog'] } = options;
+  const { issueId, fields = ['comment'], expand = ['changelog'] } = options;
   return await hostRequest(context.clientInfo.value, {
     accountId: context.accountId,
-    url: `/rest/api/3/issue/${issueKey}?${
+    url: `/rest/api/3/issue/${issueId}?${
       fields ? '&fields=' + fields.join(',') : ''
     }${expand ? '&expand=' + expand.join(',') : ''}`
   });
 }
 export async function searchIssues(context, options = {}) {
-  const { maxResults = 100, startAt = 0, fields, expand } = options;
+  const { maxResults = 100, startAt = 0, fields, expand, issueIds } = options;
   return await hostRequest(context.clientInfo.value, {
     accountId: context.accountId,
     url: `/rest/api/3/search?maxResults=${maxResults}&startAt=${startAt}${
       fields ? '&fields=' + fields.join(',') : ''
-    }${expand ? '&expand=' + expand.join(',') : ''}`
+    }${expand ? '&expand=' + expand.join(',') : ''}${
+      issueIds ? '&jql=id in(' + issueIds.join(',') + ')' : ''
+    }`
+  });
+}
+export async function getIssueKeysByIds(context, { issueIds }) {
+  const response = await searchIssues(context, { issueIds });
+  if (!response || !response.issues) return;
+  const result = new Map();
+  for (let i of response.issues) result.set(i.id, i.key);
+  return result;
+}
+export async function getIssueIdByKey(context, { issueKey }) {
+  if (!issueKey) return;
+  const response = await getIssueByKeyOrId(context, { issueKeyOrId: issueKey });
+  if (response && response.id) return response.id;
+}
+export async function getIssueByKeyOrId(context, { issueKeyOrId }) {
+  return await hostRequest(context.clientInfo.value, {
+    accountId: context.accountId,
+    url: `/rest/api/3/issue/${issueKeyOrId}`
   });
 }
 export async function getProjectDetails(context) {
@@ -444,11 +470,11 @@ export async function getProjectDetails(context) {
 }
 
 export async function getIssueChangelog(context, options = {}) {
-  const { maxResults = 100, startAt = 0, issueKey } = options;
-  if (!issueKey) throw 'issueKey is required';
+  const { maxResults = 100, startAt = 0, issueId } = options;
+  if (!issueId) throw 'issueId is required';
   return await hostRequest(context.clientInfo.value, {
     accountId: context.accountId,
-    url: `/rest/api/3/issue/${issueKey}/changelog?startAt=${startAt}&maxResults=${maxResults}`
+    url: `/rest/api/3/issue/${issueId}/changelog?startAt=${startAt}&maxResults=${maxResults}`
   });
 }
 export async function getAllIssues(context, data) {
@@ -508,7 +534,7 @@ export async function getAllIssueChangelogs(context, issue) {
   for (let comment of issue.fields.comment.comments) {
     preparedChanges.push({
       changeId: comment.id,
-      issueKey: issue.key,
+      issueId: issue.id,
       projectId: issue.fields.project.id,
       changedAt: comment.updated,
       authorId: comment.updateAuthor.accountId,
@@ -529,7 +555,7 @@ export async function getAllIssueChangelogs(context, issue) {
       const collectAllowed = collectAllowedIds.includes(item.fieldId);
       preparedChanges.push({
         changeId: history.id,
-        issueKey: issue.key,
+        issueId: issue.id,
         projectId: issue.fields.project.id,
         changedAt: history.created,
         authorId: history.author.accountId,
@@ -549,7 +575,7 @@ export async function getAllIssueChangelogs(context, issue) {
     const offset = total % maxRes;
     for (let i = 0; i < numberOfRequests; ++i) {
       const fetched = await getIssueChangelog(context, {
-        issueKey: issue.key,
+        issueId: issue.id,
         startAt: offset ? (i ? maxRes * (i - 1) + offset : 0) : i * maxRes,
         maxResults: offset ? (i ? maxRes : offset) : maxRes
       });
@@ -560,7 +586,7 @@ export async function getAllIssueChangelogs(context, issue) {
             const collectAllowed = collectAllowedIds.includes(item.fieldId);
             return {
               changeId: val.id,
-              issueKey: issue.key,
+              issueId: issue.id,
               projectId: issue.fields.project.id,
               changedAt: val.created,
               authorId: val.author.accountId,
@@ -608,26 +634,26 @@ export async function searchProjects(context, options = {}) {
 }
 
 export async function getWorklog(context, options = {}) {
-  const { issueKey } = options;
-  if (!issueKey) throw 'issueKey is required';
+  const { issueId } = options;
+  if (!issueId) throw 'issueId is required';
   return await hostRequest(context.clientInfo.value, {
     accountId: context.accountId,
-    url: `/rest/api/3/issue/${issueKey}/worklog?expand=properties`
+    url: `/rest/api/3/issue/${issueId}/worklog?expand=properties`
   });
 }
 
 export async function getAllIssueWorklogs(context, options = {}) {
   const { issue } = options;
-  if (!issue.key) throw 'issueKey is required';
+  if (!issue.id) throw 'issueId is required';
 
   const worklogs = await getWorklog(context, {
-    issueKey: issue.key
+    issueId: issue.id
   });
   const prepared = [];
   for (let i of worklogs.worklogs) {
     prepared.push({
       changeId: i.id,
-      issueKey: issue.key,
+      issueId: issue.id,
       projectId: issue.fields.project.id,
       changedAt: i.updated,
       authorId: i.updateAuthor.accountId,

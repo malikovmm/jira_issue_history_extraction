@@ -36,12 +36,12 @@ const getTransitions = async req => {
   for (let i of transitions.rows) {
     const defaultItem = {
       action: i.action,
-      issueKey: i.issueKey,
+      issueId: i.issueId,
       toVal: statusObj.name,
       changedAt: i.changedAt,
       numberOfTransitions: 1 // number of transitions to this status (i.toVal)
     };
-    const last = temp2.find(it => it.issueKey == i.issueKey);
+    const last = temp2.find(it => it.issueId == i.issueId);
     if (last) {
       // console.log('last, i', last, i);
       if (last.changedAt.toString() != i.changedAt.toString()) {

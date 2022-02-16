@@ -5,12 +5,12 @@ import { collectAllowedIds } from '../database/models/change';
 export default async function updateTime(req) {
   const issue = await getIssue(req.context, {
     fields: ['timetracking', 'project'],
-    issueKey: req.body.worklog.issueId
+    issueId: req.body.worklog.issueId
   });
   const changes = [
     {
       changeId: req.body.worklog.id,
-      issueKey: issue.key,
+      issueId: issue.id,
       projectId: issue.fields.project.id,
       changedAt: req.body.worklog.updated,
       authorId: req.body.worklog.updateAuthor.accountId,
@@ -29,7 +29,7 @@ export default async function updateTime(req) {
   if (issue.fields.timetracking.remainingEstimateSeconds != null) {
     changes.push({
       changeId: req.body.worklog.id,
-      issueKey: issue.key,
+      issueId: issue.id,
       projectId: issue.fields.project.id,
       changedAt: req.body.worklog.updated,
       authorId: req.body.worklog.updateAuthor.accountId,

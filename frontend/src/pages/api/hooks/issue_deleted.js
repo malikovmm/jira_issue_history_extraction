@@ -7,7 +7,7 @@ const issueDeleteHandler = async req => {
   if (!req.body.issue) throw 'body must have issue object';
   if (!req.body.user) throw 'body must have user object';
   const {
-    key: issueKey,
+    id: issueId,
     fields: {
       updated,
       project: { id: projectId }
@@ -17,7 +17,7 @@ const issueDeleteHandler = async req => {
 
   const change = {
     changeId: null,
-    issueKey: issueKey,
+    issueId: issueId,
     projectId: projectId,
     changedAt: updated,
     authorId: accountId,

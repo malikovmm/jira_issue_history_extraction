@@ -35,7 +35,7 @@ const issueUpdateHandler = async req => {
   console.log('ISSUE UPDATED>>>>>>>>>>>>>>>>>>>>', ins(req.body));
   const changelog = req.body.changelog;
   const {
-    key: issueKey,
+    id: issueId,
     fields: {
       updated,
       project: { id: projectId }
@@ -47,7 +47,7 @@ const issueUpdateHandler = async req => {
 
     return {
       changeId: changelog.id,
-      issueKey: issueKey,
+      issueId: issueId,
       projectId: projectId,
       changedAt: updated,
       authorId: accountId,
