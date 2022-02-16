@@ -1,6 +1,7 @@
 import {
   authenticate,
   getAllStatuses,
+  getIssueKeysByIds,
   searchProjects
 } from '../../api/atlassian';
 import { getByField } from '../../api/changeLog';
@@ -33,10 +34,15 @@ const getTransitions = async req => {
   // console.log('transitions', transitions);
   const temp2 = [];
   const statusObj = statuses.find(it => it.id == req.query.statusId);
+  const ids = transitions.rows.map(it => it.issueId);
+  const issueIdToKey = await getIssueKeysByIds(req.context, {
+    issueIds: ids
+  });
   for (let i of transitions.rows) {
     const defaultItem = {
       action: i.action,
       issueId: i.issueId,
+      issueKey: issueIdToKey.get(i.issueId),
       toVal: statusObj.name,
       changedAt: i.changedAt,
       numberOfTransitions: 1 // number of transitions to this status (i.toVal)
