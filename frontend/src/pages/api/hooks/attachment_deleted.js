@@ -7,8 +7,8 @@ const attachmentDeleteHandler = async req => {
   if (!req.body) throw 'request object must have body';
   if (!req.body.attachment) throw 'request query params must have attachment';
 
-  const { jira_issue_key, jira_issue_id, jira_project_id } = req.query;
-  const { accountId, clientKey } = req.context;
+  const { jira_issue_id, jira_project_id } = req.query;
+  const { accountId, clientId } = req.context;
   const {
     created,
     content,
@@ -26,7 +26,7 @@ const attachmentDeleteHandler = async req => {
     fieldId: 'attachment',
     isComment: false,
     action: 'delete',
-    clientKey: clientKey,
+    clientId: clientId,
     fromVal: collectAllowed ? content : null,
     toVal: null
   };

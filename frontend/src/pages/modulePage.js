@@ -390,7 +390,7 @@ async function getServerSidePropsModule(ctx) {
         pageNumber: props.pageNumber,
         limit: props.limit,
         order: getValidatedOrder(sortKey, sortOrder),
-        clientKey: req.context.clientInfo.clientKey,
+        clientId: req.context.clientInfo.clientId,
         issueId,
         authorId: user,
         field,
@@ -398,9 +398,9 @@ async function getServerSidePropsModule(ctx) {
         dateTo: dateTo
       });
       props.changesTotal = rawChangesCount;
-      if (req.context.clientInfo.clientKey && rawChangesCount == 0) {
+      if (req.context.clientInfo.clientId && rawChangesCount == 0) {
         const clientChanges = await countClientChanges({
-          clientKey: req.context.clientInfo.clientKey
+          clientId: req.context.clientInfo.clientId
         });
         if (clientChanges == 0) props.doInit = true;
       } else {

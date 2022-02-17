@@ -63,7 +63,7 @@ export default async function initHistory(req, res) {
         pageNumber,
         limit,
         order: getValidatedOrder(order.sortKey, order.sortOrder),
-        clientKey: req.context.clientInfo.clientKey
+        clientId: req.context.clientInfo.clientId
       });
       await extendChangeData(rawChanges, req.context);
       return res.json({ count, rows: rawChanges });

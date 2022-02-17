@@ -437,11 +437,14 @@ export async function searchIssues(context, options = {}) {
   const { maxResults = 100, startAt = 0, fields, expand, issueIds } = options;
   return await hostRequest(context.clientInfo.value, {
     accountId: context.accountId,
-    url: `/rest/api/3/search?maxResults=${maxResults}&startAt=${startAt}${
-      fields ? '&fields=' + fields.join(',') : ''
-    }${expand ? '&expand=' + expand.join(',') : ''}${
-      issueIds ? '&jql=id in(' + issueIds.join(',') + ')' : ''
-    }`
+    url: `/rest/api/3/search`,
+    search: {
+      maxResults,
+      startAt,
+      fields: fields && fields.length ? fields.join(',') : null,
+      expand: expand && expand.length ? expand.join(',') : null,
+      jql: issueIds ? 'id in(' + issueIds.join(',') + ')' : null
+    }
   });
 }
 export async function getIssueKeysByIds(context, { issueIds }) {
@@ -474,7 +477,11 @@ export async function getIssueChangelog(context, options = {}) {
   if (!issueId) throw 'issueId is required';
   return await hostRequest(context.clientInfo.value, {
     accountId: context.accountId,
-    url: `/rest/api/3/issue/${issueId}/changelog?startAt=${startAt}&maxResults=${maxResults}`
+    url: `/rest/api/3/issue/${issueId}/changelog`,
+    search: {
+      startAt,
+      maxResults
+    }
   });
 }
 export async function getAllIssues(context, data) {
@@ -543,7 +550,7 @@ export async function getAllIssueChangelogs(context, issue) {
       fieldId: 'comment',
       isComment: true,
       action: util.getCommentAction(comment),
-      clientKey: context.clientInfo.clientKey,
+      clientId: context.clientInfo.clientId,
       toVal: collectAllowedIds.includes('comment') ? handleToVal(item) : null,
       fromVal: collectAllowedIds.includes('comment')
         ? handleFromVal(item)
@@ -564,7 +571,7 @@ export async function getAllIssueChangelogs(context, issue) {
         fieldId: item.fieldId,
         isComment: false,
         action: util.getHistoryAction(item),
-        clientKey: context.clientInfo.clientKey,
+        clientId: context.clientInfo.clientId,
         toVal: collectAllowed ? handleToVal(item) : null,
         fromVal: collectAllowed ? handleFromVal(item) : null
       });
@@ -595,7 +602,7 @@ export async function getAllIssueChangelogs(context, issue) {
               fieldId: item.fieldId,
               isComment: false,
               action: util.getHistoryAction(item),
-              clientKey: context.clientInfo.clientKey,
+              clientId: context.clientInfo.clientId,
               toVal: collectAllowed ? handleToVal(item) : null,
               fromVal: collectAllowed ? handleFromVal(item) : null
             };
@@ -638,7 +645,10 @@ export async function getWorklog(context, options = {}) {
   if (!issueId) throw 'issueId is required';
   return await hostRequest(context.clientInfo.value, {
     accountId: context.accountId,
-    url: `/rest/api/3/issue/${issueId}/worklog?expand=properties`
+    url: `/rest/api/3/issue/${issueId}/worklog`,
+    search: {
+      expand: 'properties'
+    }
   });
 }
 
@@ -662,7 +672,7 @@ export async function getAllIssueWorklogs(context, options = {}) {
       fieldId: 'timespent',
       isComment: false,
       action: 'create',
-      clientKey: context.clientInfo.clientKey,
+      clientId: context.clientInfo.clientId,
       fromVal: null,
       toVal: collectAllowedIds.includes('timespent') ? i.timeSpentSeconds : null
     });

@@ -4,7 +4,7 @@ import { getByChangedFields } from '../../api/changeLog';
 const issueUpdateHandler = async req => {
   if (!req) throw 'wrong request object';
   const fields = await getByChangedFields({
-    clientKey: req.context.clientInfo.clientKey,
+    clientId: req.context.clientInfo.clientId,
     attributes: ['issueId', 'field', 'fieldId'],
     group: ['issueId', 'field', 'fieldId']
   });

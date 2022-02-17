@@ -3,6 +3,8 @@ import { bulkCreateChanges } from '../../../api/changeLog';
 import { collectAllowedIds } from '../../../database/models/change';
 import { getHistoryAction, ins } from '../../../utils';
 
+const ignoreFieldsIds = ['attachment'];
+
 function handleToVal(item) {
   switch (item.field) {
     case 'status': {
@@ -32,7 +34,6 @@ const issueUpdateHandler = async req => {
   if (!req.body.changelog) throw 'body must have changelog object';
   if (!req.body.issue) throw 'body must have issue object';
   if (!req.body.user) throw 'body must have user object';
-  console.log('ISSUE UPDATED>>>>>>>>>>>>>>>>>>>>', ins(req.body));
   const changelog = req.body.changelog;
   const {
     id: issueId,
@@ -42,25 +43,26 @@ const issueUpdateHandler = async req => {
     }
   } = req.body.issue;
   const { accountId } = req.body.user;
-  const changes = changelog.items.map(it => {
-    const collectAllowed = collectAllowedIds.includes(it.fieldId);
-
-    return {
-      changeId: changelog.id,
-      issueId: issueId,
-      projectId: projectId,
-      changedAt: updated,
-      authorId: accountId,
-      field: it.field,
-      fieldType: it.fieldtype,
-      fieldId: it.fieldId,
-      isComment: false,
-      action: getHistoryAction(it),
-      clientKey: req.context.clientInfo.clientKey,
-      fromVal: collectAllowed ? handleFromVal(it) : null,
-      toVal: collectAllowed ? handleToVal(it) : null
-    };
-  });
+  const changes = changelog.items
+    .filter(it => !ignoreFieldsIds.includes(it.fieldId))
+    .map(it => {
+      const collectAllowed = collectAllowedIds.includes(it.fieldId);
+      return {
+        changeId: changelog.id,
+        issueId: issueId,
+        projectId: projectId,
+        changedAt: updated,
+        authorId: accountId,
+        field: it.field,
+        fieldType: it.fieldtype,
+        fieldId: it.fieldId,
+        isComment: false,
+        action: getHistoryAction(it),
+        clientId: req.context.clientInfo.clientId,
+        fromVal: collectAllowed ? handleFromVal(it) : null,
+        toVal: collectAllowed ? handleToVal(it) : null
+      };
+    });
   return await bulkCreateChanges(changes);
 };
 

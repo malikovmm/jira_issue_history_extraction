@@ -26,7 +26,7 @@ const issueCreateHandler = async req => {
     fieldId: 'issue',
     isComment: false,
     action: 'create',
-    clientKey: req.context.clientInfo.clientKey,
+    clientId: req.context.clientInfo.clientId,
     fromVal: null,
     toVal: null
   };

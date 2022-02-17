@@ -11,7 +11,7 @@ const issueUpdateHandler = async req => {
 
   const tSpent = reqSpent
     ? await getByField({
-        clientKey: req.context.clientInfo.clientKey,
+        clientId: req.context.clientInfo.clientId,
         fieldId: 'timespent',
         order: [['changedAt', 'ASC']],
         toVal: { [Op.ne]: null },
@@ -20,7 +20,7 @@ const issueUpdateHandler = async req => {
     : {};
   const tEstimate = reqEstimate
     ? await getByField({
-        clientKey: req.context.clientInfo.clientKey,
+        clientId: req.context.clientInfo.clientId,
         fieldId: 'timeestimate',
         order: [['changedAt', 'ASC']],
         toVal: { [Op.ne]: null },

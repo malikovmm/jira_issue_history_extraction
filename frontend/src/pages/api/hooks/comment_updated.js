@@ -22,7 +22,7 @@ const commentUpdatedHandler = async req => {
     fieldId: 'comment',
     isComment: true,
     action: 'update',
-    clientKey: req.context.clientInfo.clientKey,
+    clientId: req.context.clientInfo.clientId,
     toVal: collectAllowed ? item.toString : null,
     fromVal: collectAllowed ? item.fromString : null
   });

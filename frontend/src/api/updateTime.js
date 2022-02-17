@@ -19,7 +19,7 @@ export default async function updateTime(req) {
       fieldId: 'timespent',
       isComment: false,
       action: 'create',
-      clientKey: req.context.clientInfo.clientKey,
+      clientId: req.context.clientInfo.clientId,
       fromVal: null,
       toVal: collectAllowedIds.includes('timespent')
         ? issue.fields.timetracking.timeSpentSeconds
@@ -38,7 +38,7 @@ export default async function updateTime(req) {
       fieldId: 'timeestimate',
       isComment: false,
       action: 'create',
-      clientKey: req.context.clientInfo.clientKey,
+      clientId: req.context.clientInfo.clientId,
       fromVal: null,
       toVal: collectAllowedIds.includes('timeestimate')
         ? issue.fields.timetracking.remainingEstimateSeconds

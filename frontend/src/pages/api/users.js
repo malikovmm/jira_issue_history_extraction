@@ -5,7 +5,7 @@ import { getUserIds } from '../../api/changeLog';
 export const getAllUsers = async req => {
   if (!req) throw 'wrong request object';
   const { count, rows: userIds } = await getUserIds({
-    clientKey: req.context.clientInfo.clientKey
+    clientId: req.context.clientInfo.clientId
   });
   if (!count) {
     console.log('getAllUsers COUNT IS 0');

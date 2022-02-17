@@ -21,13 +21,13 @@ export const getChanges = async data => {
     order,
     dateFrom,
     dateTo,
-    clientKey
+    clientId
   } = data;
-  if (!clientKey) throw 'clientKey is required';
+  if (!clientId) throw 'clientId is required';
   const dateFromMoment = moment(dateFrom);
   const dateToMoment = moment(dateTo);
   const offset = pageNumber ? (pageNumber - 1) * limit : 0;
-  const where = { clientKey };
+  const where = { clientId };
   id && (where.id = id);
   changeId && (where.changeId = changeId);
   issueId && (where.issueId = issueId);
@@ -59,11 +59,11 @@ export const getChanges = async data => {
 };
 
 export const countClientChanges = async data => {
-  const { clientKey } = data;
-  if (!clientKey) throw 'clientKey is required';
+  const { clientId } = data;
+  if (!clientId) throw 'clientId is required';
   const query = {
     where: {
-      clientKey
+      clientId
     },
     raw: true
   };
@@ -82,9 +82,9 @@ export const createChange = async change => {
 };
 
 export const getUserIds = async data => {
-  const { clientKey } = data;
-  if (!clientKey) throw 'clientKey is required';
-  const where = { clientKey };
+  const { clientId } = data;
+  if (!clientId) throw 'clientId is required';
+  const where = { clientId };
   const query = {
     where,
     raw: true,
@@ -97,7 +97,7 @@ export const getUserIds = async data => {
 
 export const getByField = async data => {
   const {
-    clientKey,
+    clientId,
     fieldId,
     order,
     toVal,
@@ -107,11 +107,11 @@ export const getByField = async data => {
     attributes,
     group
   } = data;
-  if (!clientKey) throw 'clientKey is required';
+  if (!clientId) throw 'clientId is required';
 
   const offset = limit ? (pageNumber ? (pageNumber - 1) * limit : 0) : 0;
 
-  const where = { clientKey, fieldId };
+  const where = { clientId, fieldId };
   toVal && (where.toVal = toVal);
   action && (where.action = action);
 
@@ -129,12 +129,12 @@ export const getByField = async data => {
 };
 
 export const getByChangedFields = async data => {
-  const { clientKey, order, attributes, group, limit, pageNumber } = data;
-  if (!clientKey) throw 'clientKey is required';
+  const { clientId, order, attributes, group, limit, pageNumber } = data;
+  if (!clientId) throw 'clientId is required';
 
   const offset = limit ? (pageNumber ? (pageNumber - 1) * limit : 0) : 0;
 
-  const where = { clientKey };
+  const where = { clientId };
 
   const query = {
     offset,

@@ -24,7 +24,7 @@ const getTransitions = async req => {
     return projToStatuses;
   }
   const queryOptions = {
-    clientKey: req.context.clientInfo.clientKey,
+    clientId: req.context.clientInfo.clientId,
     fieldId: 'status',
     order: [['changedAt', 'ASC']],
     toVal: req.query.statusId

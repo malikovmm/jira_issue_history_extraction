@@ -26,7 +26,7 @@ const issueDeleteHandler = async req => {
     fieldId: 'issue',
     isComment: false,
     action: 'delete',
-    clientKey: req.context.clientInfo.clientKey,
+    clientId: req.context.clientInfo.clientId,
     fromVal: null,
     toVal: null
   };
@@ -44,7 +44,7 @@ export default async function hook(req, res) {
     })
     .catch(e => {
       const { message = e, statusCode = 500 } = e;
-      console.log('issue_created > authenticate error', e);
+      console.log('issue_deleted > authenticate error', e);
       return res.status(statusCode).json({
         success: false,
         error: message

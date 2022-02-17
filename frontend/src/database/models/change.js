@@ -78,8 +78,8 @@ export default function (sequelize, DataTypes) {
         type: DataTypes.STRING,
         allowNull: false
       },
-      clientKey: {
-        type: DataTypes.STRING,
+      clientId: {
+        type: DataTypes.INTEGER,
         allowNull: false
       },
       fromVal: {

@@ -21,7 +21,7 @@ const commentCreatedHandler = async req => {
     fieldId: 'comment',
     isComment: true,
     action: 'create',
-    clientKey: req.context.clientInfo.clientKey
+    clientId: req.context.clientInfo.clientId
   });
 };
 
