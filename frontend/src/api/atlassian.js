@@ -445,7 +445,7 @@ export async function searchIssues(context, options = {}) {
   });
 }
 export async function getIssueKeysByIds(context, { issueIds }) {
-  const response = await searchIssues(context, { issueIds });
+  const response = await getAllIssues(context, { issueIds });
   if (!response || !response.issues) return;
   const result = new Map();
   for (let i of response.issues) result.set(i.id, i.key);
